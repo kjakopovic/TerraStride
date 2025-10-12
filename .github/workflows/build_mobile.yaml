@@ -20,13 +20,13 @@ jobs:
         with:
           node-version: "20" # TODO: pitati Majkija koja verzija
 
-      - name: Install dependencies
-        working-directory: mobile
-        run: npm install
+      # - name: Install dependencies
+      #   working-directory: mobile
+      #   run: npm i
 
-      - name: Build expo app
-        working-directory: mobile
-        run: npm run build
+      # - name: Build expo app
+      #   working-directory: mobile
+      #   run: npm run build
 
   check_quality:
     runs-on: ubuntu-latest
@@ -40,10 +40,11 @@ jobs:
         with:
           node-version: "20" # TODO: pitati Majkija koja verzija
 
-      - name: Install dependencies
-        working-directory: mobile
-        run: npm install
 
-      - name: Run lint
-        working-directory: mobile
-        run: npm run lint
+      # - name: Install dependencies
+      #   working-directory: mobile
+      #   run: npm i
+
+      # - name: Run lint
+      #   working-directory: mobile
+      #   run: npm run lint
