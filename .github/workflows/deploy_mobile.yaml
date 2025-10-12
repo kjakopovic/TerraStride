@@ -1,0 +1,59 @@
+name: Build and deploy expo app
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "mobile/**"
+      - ".github/workflows/deploy_mobile.yaml"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: "20" # TODO: pitati Majkija koja verzija
+
+      - name: Install dependencies
+        working-directory: mobile
+        run: npm install
+
+      - name: Build expo app
+        working-directory: mobile
+        run: npm run build
+
+  check_quality:
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: "20" # TODO: pitati Majkija koja verzija
+
+      - name: Install dependencies
+        working-directory: mobile
+        run: npm install
+
+      - name: Run lint
+        working-directory: mobile
+        run: npm run lint
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: check_quality
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: deploy
+        run: echo "Deploying expo app..." # TODO: implement deploy step, it would be good hit deploy and close pipeline (because expo deployments take a long time, up to 30-40mins)
