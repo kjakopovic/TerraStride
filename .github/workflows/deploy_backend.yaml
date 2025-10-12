@@ -10,8 +10,7 @@ on:
 
 env:
   AWS_REGION: "eu-central-1"
-  USERS_SERVICE_PATH: backend/services/users
-  EVENTS_SERVICE_PATH: backend/services/events
+  BACKEND_PATH: backend
 
 jobs:
   deploy_users:
@@ -33,8 +32,8 @@ jobs:
           aws_region: ${{ env.AWS_REGION }}
 
       - name: Deploy Users Service
-        working-directory: ${{ env.USERS_SERVICE_PATH }}
-        run: echo "Deploying Users Service..." # TODO: cdk deploy
+        working-directory: ${{ env.BACKEND_PATH }}
+        run: make deploy-users
 
   deploy_events:
     runs-on: ubuntu-latest
@@ -55,5 +54,5 @@ jobs:
           aws_region: ${{ env.AWS_REGION }}
 
       - name: Deploy Events Service
-        working-directory: ${{ env.EVENTS_SERVICE_PATH }}
+        working-directory: ${{ env.BACKEND_PATH }}
         run: echo "Deploying Events Service..." # TODO: cdk deploy

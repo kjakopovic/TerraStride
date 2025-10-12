@@ -1,5 +1,5 @@
-build:
-	cdk synth
+build-users:
+	cd ./users && cdk synth
 
-deploy:
-	cdk deploy --all --require-approval never
+deploy-users:
+	cd ./users && cdk deploy

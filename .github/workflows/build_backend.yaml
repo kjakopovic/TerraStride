@@ -10,8 +10,7 @@ on:
 
 env:
   AWS_REGION: "eu-central-1"
-  USERS_SERVICE_PATH: backend/services/users
-  EVENTS_SERVICE_PATH: backend/services/events
+  BACKEND_PATH: backend
 
 # TODO: check if I need AWS setup for tests
 
@@ -31,12 +30,12 @@ jobs:
         run: pip install boto3
         shell: bash
 
-      # - name: Build Users Service
-      #   working-directory: ${{ env.USERS_SERVICE_PATH }}
-      #   run: sam build --parallel --cached # TODO: cdk build
+      - name: Build Users Service
+        working-directory: ${{ env.BACKEND_PATH }}
+        run: make build-users
 
       # - name: Run Tests
-      #   working-directory: ${{ env.USERS_SERVICE_PATH }}
+      #   working-directory: ${{ env.BACKEND_PATH }}
       #   run: python -m unittest discover -s tests -p "test*.py" -v
 
   test_events:
@@ -55,9 +54,9 @@ jobs:
         shell: bash
 
       # - name: Build Events Service
-      #   working-directory: ${{ env.EVENTS_SERVICE_PATH }}
+      #   working-directory: ${{ env.BACKEND_PATH }}
       #   run: sam build --parallel --cached # TODO: cdk build
 
       # - name: Run Tests
-      #   working-directory: ${{ env.EVENTS_SERVICE_PATH }}
+      #   working-directory: ${{ env.BACKEND_PATH }}
       #   run: python -m unittest discover -s tests -p "test*.py" -v
