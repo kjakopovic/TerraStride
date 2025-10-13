@@ -1,27 +1,22 @@
+import React from "react";
 import { View, Text, ScrollView } from "react-native";
-import { useTheme } from "@/core/theme";
-import * as icons from "@/core/constants/icons";
-import React, { useCallback } from "react";
 import { SafeAreaView } from "react-native-safe-area-context";
 import AuthHeader from "@/components/auth/authHeader";
 import CustomAuthInput from "@/components/auth/customAuthInput";
 import CustomButton from "@/components/customButton";
 import Spacer from "@/components/spacer";
+import { useTheme } from "@/core/theme";
 import { STRINGS } from "@/core/constants/strings";
 import { useRouter } from "expo-router";
 
-const Login = () => {
+const Register = () => {
   const { colors, fontSizes, spacing } = useTheme();
 
   const router = useRouter();
 
-  const goToRegister = useCallback(() => {
-    router.push("/register");
-  }, [router]);
-
-  const login = useCallback(() => {
-    router.replace("/home");
-  }, [router]);
+  const goToWalletPassphrase = () => {
+    router.push("/walletPassphrase");
+  };
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
@@ -36,45 +31,27 @@ const Login = () => {
           }}
         >
           <AuthHeader
-            title={STRINGS.AUTH.LOGIN.TITLE}
-            subtitle={STRINGS.AUTH.LOGIN.SUBTITLE}
+            title={STRINGS.AUTH.REGISTER.TITLE}
+            subtitle={STRINGS.AUTH.REGISTER.SUBTITLE}
           />
           <CustomAuthInput
-            label={STRINGS.AUTH.LOGIN.EMAIL_LABEL}
-            placeholder={STRINGS.AUTH.LOGIN.EMAIL_PLACEHOLDER}
+            label={STRINGS.AUTH.REGISTER.USERNAME_LABEL}
+            placeholder={STRINGS.AUTH.REGISTER.USERNAME_PLACEHOLDER}
             customMargin={64}
           />
           <CustomAuthInput
-            label={STRINGS.AUTH.LOGIN.PASSWORD_LABEL}
-            placeholder={STRINGS.AUTH.LOGIN.PASSWORD_PLACEHOLDER}
+            label={STRINGS.AUTH.REGISTER.EMAIL_LABEL}
+            placeholder={STRINGS.AUTH.REGISTER.EMAIL_PLACEHOLDER}
+          />
+          <CustomAuthInput
+            label={STRINGS.AUTH.REGISTER.PASSWORD_LABEL}
+            placeholder={STRINGS.AUTH.REGISTER.PASSWORD_PLACEHOLDER}
             secureTextEntry
           />
           <Spacer size={spacing.large} />
-          <CustomButton title={STRINGS.AUTH.LOGIN.CTA} onPress={login} />
-          <Text
-            style={{
-              fontSize: fontSizes.medium,
-              color: colors.text40,
-              textAlign: "center",
-              alignSelf: "center",
-              marginTop: spacing.medium,
-            }}
-          >
-            {STRINGS.AUTH.COMMON.OR}
-          </Text>
-          <Spacer size={spacing.medium} />
           <CustomButton
-            title={STRINGS.AUTH.LOGIN.GOOGLE_CTA}
-            onPress={() => {}}
-            variant="secondary"
-            icon={icons.google}
-          />
-          <Spacer size={spacing.small} />
-          <CustomButton
-            title={STRINGS.AUTH.LOGIN.APPLE_CTA}
-            onPress={() => {}}
-            variant="secondary"
-            icon={icons.apple}
+            title={STRINGS.AUTH.REGISTER.CTA}
+            onPress={goToWalletPassphrase}
           />
           <Spacer size={spacing.large} />
           <Text
@@ -86,15 +63,14 @@ const Login = () => {
               alignSelf: "center",
             }}
           >
-            {STRINGS.AUTH.LOGIN.NO_ACCOUNT}{" "}
+            {STRINGS.AUTH.REGISTER.HAVE_ACCOUNT}{" "}
             <Text
-              onPress={goToRegister}
               style={{
                 color: colors.primary,
                 fontFamily: "LeagueSpartan-Bold",
               }}
             >
-              {STRINGS.AUTH.LOGIN.SIGN_UP}
+              {STRINGS.AUTH.REGISTER.SIGN_IN}
             </Text>
           </Text>
           <Spacer size={spacing.small} />
@@ -104,4 +80,4 @@ const Login = () => {
   );
 };
 
-export default Login;
+export default Register;

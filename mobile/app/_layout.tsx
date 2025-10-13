@@ -3,7 +3,7 @@ import { ThemeProvider, theme } from "@/core/theme";
 import { useEffect } from "react";
 import * as SplashScreen from "expo-splash-screen";
 import { useFonts } from "expo-font";
-import { fontAssets } from "@/core/fonts";
+import { fontAssets } from "@/core/constants/fonts";
 // import "@/core/i18n";
 
 void SplashScreen.preventAutoHideAsync();
@@ -25,6 +25,7 @@ export default function RootLayout() {
     <ThemeProvider value={theme}>
       <Stack>
         <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+        <Stack.Screen name="(root)" options={{ headerShown: false }} />
       </Stack>
     </ThemeProvider>
   );

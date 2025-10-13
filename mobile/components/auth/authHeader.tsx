@@ -1,6 +1,6 @@
 import { View, Text, Image } from "react-native";
 import { useTheme } from "@/core/theme";
-import * as images from "@/core/images";
+import * as images from "@/core/constants/images";
 import React from "react";
 import { STRINGS } from "@/core/constants/strings";
 
