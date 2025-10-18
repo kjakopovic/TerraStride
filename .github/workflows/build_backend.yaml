@@ -10,10 +10,7 @@ on:
 
 env:
   AWS_REGION: "eu-central-1"
-  USERS_SERVICE_PATH: backend/services/users
-  EVENTS_SERVICE_PATH: backend/services/events
-
-# TODO: check if I need AWS setup for tests
+  BACKEND_PATH: backend
 
 jobs:
   test_users:
@@ -27,37 +24,29 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Install Python packages
-        run: pip install boto3
-        shell: bash
-
-      # - name: Build Users Service
-      #   working-directory: ${{ env.USERS_SERVICE_PATH }}
-      #   run: sam build --parallel --cached # TODO: cdk build
-
-      # - name: Run Tests
-      #   working-directory: ${{ env.USERS_SERVICE_PATH }}
-      #   run: python -m unittest discover -s tests -p "test*.py" -v
-
-  test_events:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
-
-      - name: Set up Python
-        uses: actions/setup-python@v3
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
         with:
-          python-version: "3.12"
+          node-version: "24"
 
       - name: Install Python packages
-        run: pip install boto3
+        run: pip install boto3 aws-cdk-lib constructs
         shell: bash
 
-      # - name: Build Events Service
-      #   working-directory: ${{ env.EVENTS_SERVICE_PATH }}
-      #   run: sam build --parallel --cached # TODO: cdk build
+      - name: Install AWS CDK CLI
+        run: npm install -g aws-cdk
+
+      - name: Set up AWS CLI
+        uses: ./.github/composite/aws_setup
+        with:
+          aws_access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws_region: ${{ env.AWS_REGION }}
+
+      - name: Build Users Service
+        working-directory: ${{ env.BACKEND_PATH }}
+        run: make build-users
 
       # - name: Run Tests
-      #   working-directory: ${{ env.EVENTS_SERVICE_PATH }}
+      #   working-directory: ${{ env.BACKEND_PATH }}
       #   run: python -m unittest discover -s tests -p "test*.py" -v
