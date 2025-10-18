@@ -12,8 +12,6 @@ env:
   AWS_REGION: "eu-central-1"
   BACKEND_PATH: backend
 
-# TODO: check if I need AWS setup for tests
-
 jobs:
   test_users:
     runs-on: ubuntu-latest
@@ -26,9 +24,27 @@ jobs:
         with:
           python-version: "3.12"
 
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: "24"
+
       - name: Install Python packages
         run: pip install boto3
         shell: bash
+
+      - name: Install AWS CDK CLI
+        run: npm install -g aws-cdk
+
+      - name: Set up AWS CLI
+        uses: ./.github/composite/aws_setup
+        with:
+          aws_access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws_region: ${{ env.AWS_REGION }}
+
+      - name: Check Docker
+        run: docker --version
 
       - name: Build Users Service
         working-directory: ${{ env.BACKEND_PATH }}
