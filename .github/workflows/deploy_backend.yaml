@@ -1,0 +1,59 @@
+name: Deploy backend
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "backend/**"
+      - ".github/workflows/deploy_backend.yaml"
+
+env:
+  AWS_REGION: "eu-central-1"
+  USERS_SERVICE_PATH: backend/services/users
+  EVENTS_SERVICE_PATH: backend/services/events
+
+jobs:
+  deploy_users:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v3
+        with:
+          python-version: "3.12"
+
+      - name: Set up AWS CLI
+        uses: ./.github/composite/aws_setup
+        with:
+          aws_access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws_region: ${{ env.AWS_REGION }}
+
+      - name: Deploy Users Service
+        working-directory: ${{ env.USERS_SERVICE_PATH }}
+        run: echo "Deploying Users Service..." # TODO: cdk deploy
+
+  deploy_events:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v3
+        with:
+          python-version: "3.12"
+
+      - name: Set up AWS CLI
+        uses: ./.github/composite/aws_setup
+        with:
+          aws_access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws_region: ${{ env.AWS_REGION }}
+
+      - name: Deploy Events Service
+        working-directory: ${{ env.EVENTS_SERVICE_PATH }}
+        run: echo "Deploying Events Service..." # TODO: cdk deploy

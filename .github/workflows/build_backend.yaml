@@ -1,0 +1,63 @@
+name: Build And Test Backend
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "backend/**"
+      - ".github/workflows/build_backend.yaml"
+
+env:
+  AWS_REGION: "eu-central-1"
+  USERS_SERVICE_PATH: backend/services/users
+  EVENTS_SERVICE_PATH: backend/services/events
+
+# TODO: check if I need AWS setup for tests
+
+jobs:
+  test_users:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v3
+        with:
+          python-version: "3.12"
+
+      - name: Install Python packages
+        run: pip install boto3
+        shell: bash
+
+      # - name: Build Users Service
+      #   working-directory: ${{ env.USERS_SERVICE_PATH }}
+      #   run: sam build --parallel --cached # TODO: cdk build
+
+      # - name: Run Tests
+      #   working-directory: ${{ env.USERS_SERVICE_PATH }}
+      #   run: python -m unittest discover -s tests -p "test*.py" -v
+
+  test_events:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v3
+        with:
+          python-version: "3.12"
+
+      - name: Install Python packages
+        run: pip install boto3
+        shell: bash
+
+      # - name: Build Events Service
+      #   working-directory: ${{ env.EVENTS_SERVICE_PATH }}
+      #   run: sam build --parallel --cached # TODO: cdk build
+
+      # - name: Run Tests
+      #   working-directory: ${{ env.EVENTS_SERVICE_PATH }}
+      #   run: python -m unittest discover -s tests -p "test*.py" -v
