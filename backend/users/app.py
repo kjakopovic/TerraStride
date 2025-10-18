@@ -34,6 +34,13 @@ class TerrastrideUsersStack(Stack):
             standard_attributes=cognito.StandardAttributes(
                 email=cognito.StandardAttribute(required=True, mutable=True),
             ),
+            custom_attributes={
+                "name": cognito.StringAttribute(mutable=True),
+                "six_digit_code": cognito.StringAttribute(mutable=True),
+                "coin_balance": cognito.StringAttribute(mutable=True),
+                "territory_blocks": cognito.StringAttribute(mutable=True),
+                "created_at": cognito.StringAttribute(mutable=True),
+            },
             removal_policy=RemovalPolicy.DESTROY,
         )
 
@@ -73,13 +80,13 @@ class TerrastrideUsersStack(Stack):
             runtime=_lambda.Runtime.PYTHON_3_12,
             handler="lambda_handler.lambda_handler",
             code=_lambda.Code.from_asset(
-                "./register",
+                ".",
                 bundling={
                     "image": _lambda.Runtime.PYTHON_3_12.bundling_image,
                     "command": [
                         "bash",
                         "-c",
-                        "pip install aws-lambda-powertools -t /asset-output && cp -r . /asset-output && cp ../middleware.py /asset-output",
+                        "cd register && pip install aws-lambda-powertools fastjsonschema -t /asset-output && cp -r . /asset-output && cp ../middleware.py /asset-output",
                     ],
                 },
             ),
@@ -99,13 +106,13 @@ class TerrastrideUsersStack(Stack):
             runtime=_lambda.Runtime.PYTHON_3_12,
             handler="lambda_handler.lambda_handler",
             code=_lambda.Code.from_asset(
-                "./login",
+                ".",
                 bundling={
                     "image": _lambda.Runtime.PYTHON_3_12.bundling_image,
                     "command": [
                         "bash",
                         "-c",
-                        "pip install aws-lambda-powertools -t /asset-output && cp -r . /asset-output && cp ../middleware.py /asset-output",
+                        "cd login && pip install aws-lambda-powertools fastjsonschema -t /asset-output && cp -r . /asset-output && cp ../middleware.py /asset-output",
                     ],
                 },
             ),
@@ -125,13 +132,13 @@ class TerrastrideUsersStack(Stack):
             runtime=_lambda.Runtime.PYTHON_3_12,
             handler="lambda_handler.lambda_handler",
             code=_lambda.Code.from_asset(
-                "./getuserinfo",
+                ".",
                 bundling={
                     "image": _lambda.Runtime.PYTHON_3_12.bundling_image,
                     "command": [
                         "bash",
                         "-c",
-                        "pip install aws-lambda-powertools -t /asset-output && cp -r . /asset-output && cp ../middleware.py /asset-output",
+                        "cd getuserinfo && pip install aws-lambda-powertools fastjsonschema -t /asset-output && cp -r . /asset-output && cp ../middleware.py /asset-output",
                     ],
                 },
             ),
@@ -149,13 +156,13 @@ class TerrastrideUsersStack(Stack):
             runtime=_lambda.Runtime.PYTHON_3_12,
             handler="lambda_handler.lambda_handler",
             code=_lambda.Code.from_asset(
-                "./resendverification",
+                ".",
                 bundling={
                     "image": _lambda.Runtime.PYTHON_3_12.bundling_image,
                     "command": [
                         "bash",
                         "-c",
-                        "pip install aws-lambda-powertools -t /asset-output && cp -r . /asset-output && cp ../middleware.py /asset-output",
+                        "cd resendverification && pip install aws-lambda-powertools fastjsonschema -t /asset-output && cp -r . /asset-output && cp ../middleware.py /asset-output",
                     ],
                 },
             ),
@@ -174,13 +181,13 @@ class TerrastrideUsersStack(Stack):
             runtime=_lambda.Runtime.PYTHON_3_12,
             handler="lambda_handler.lambda_handler",
             code=_lambda.Code.from_asset(
-                "./sendverification",
+                ".",
                 bundling={
                     "image": _lambda.Runtime.PYTHON_3_12.bundling_image,
                     "command": [
                         "bash",
                         "-c",
-                        "pip install aws-lambda-powertools -t /asset-output && cp -r . /asset-output && cp ../middleware.py /asset-output",
+                        "cd sendverification && pip install aws-lambda-powertools fastjsonschema -t /asset-output && cp -r . /asset-output && cp ../middleware.py /asset-output",
                     ],
                 },
             ),
@@ -222,10 +229,11 @@ class TerrastrideUsersStack(Stack):
         api.root.add_resource("register").add_method("POST", register_integration)
         api.root.add_resource("login").add_method("POST", login_integration)
         api.root.add_resource("me").add_method("GET", get_user_info_integration)
-        api.root.add_resource("verification/resend").add_method(
+        verification = api.root.add_resource("verification")
+        verification.add_resource("resend").add_method(
             "POST", resend_verification_integration
         )
-        api.root.add_resource("verification/send").add_method(
+        verification.add_resource("send").add_method(
             "POST", send_verification_integration
         )
 

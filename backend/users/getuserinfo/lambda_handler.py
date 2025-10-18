@@ -67,8 +67,19 @@ def get_user_attributes(headers):
     response = cognito_client.get_user(AccessToken=access_token)
 
     # Parse attributes into a dict
-    user_attributes = {
-        attr["Name"]: attr["Value"] for attr in response["UserAttributes"]
-    }
+    user_attributes = {}
+    for attr in response["UserAttributes"]:
+        attr_name = attr["Name"]
+        # Remove 'custom:' prefix if present
+        if attr_name.startswith("custom:"):
+            attr_name = attr_name[7:]  # Remove 'custom:' (7 characters)
+
+        if (
+            attr["Name"] == "custom:territory_blocks"
+            or attr["Name"] == "custom:coin_balance"
+        ):
+            user_attributes[attr_name] = int(attr["Value"])
+        else:
+            user_attributes[attr_name] = attr["Value"]
 
     return user_attributes

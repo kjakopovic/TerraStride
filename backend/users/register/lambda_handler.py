@@ -55,12 +55,11 @@ def register_user(email, password, username, six_digit_code):
         Password=password,
         UserAttributes=[
             {"Name": "email", "Value": email},
-            {"Name": "username", "Value": username},
-            {"Name": "six_digit_code", "Value": six_digit_code},
-            {"Name": "coin_balance", "Value": 0},
-            {"Name": "territory_blocks", "Value": 0},
-            {"Name": "updated_at", "Value": time()},
-            {"Name": "created_at", "Value": time()},
+            {"Name": "custom:name", "Value": username},
+            {"Name": "custom:six_digit_code", "Value": six_digit_code},
+            {"Name": "custom:coin_balance", "Value": str(0)},
+            {"Name": "custom:territory_blocks", "Value": str(0)},
+            {"Name": "custom:created_at", "Value": str(time())},
         ],
     )
 
