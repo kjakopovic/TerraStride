@@ -30,7 +30,7 @@ jobs:
           node-version: "24"
 
       - name: Install Python packages
-        run: pip install boto3
+        run: pip install boto3 aws-cdk-lib constructs
         shell: bash
 
       - name: Install AWS CDK CLI
