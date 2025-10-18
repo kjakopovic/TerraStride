@@ -34,25 +34,3 @@ jobs:
       - name: Deploy Users Service
         working-directory: ${{ env.BACKEND_PATH }}
         run: make deploy-users
-
-  deploy_events:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
-
-      - name: Set up Python
-        uses: actions/setup-python@v3
-        with:
-          python-version: "3.12"
-
-      - name: Set up AWS CLI
-        uses: ./.github/composite/aws_setup
-        with:
-          aws_access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws_region: ${{ env.AWS_REGION }}
-
-      - name: Deploy Events Service
-        working-directory: ${{ env.BACKEND_PATH }}
-        run: echo "Deploying Events Service..." # TODO: cdk deploy
