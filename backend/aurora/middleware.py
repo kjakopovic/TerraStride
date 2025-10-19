@@ -1,11 +1,9 @@
 from aws_lambda_powertools.middleware_factory import lambda_handler_decorator
 from aws_lambda_powertools.utilities.validation import SchemaValidationError
 from aws_lambda_powertools import Logger
-from psycopg2.extras import RealDictCursor
 import os
 import json
 import boto3
-import psycopg2
 
 # Configure logging
 logger = Logger()
@@ -80,61 +78,3 @@ def _cors_response(method):
         )
 
     return None
-
-
-def get_user_id(headers):
-    auth_header = headers.get("access_token")
-    capitalized_auth_header = headers.get("Access_token")
-
-    access_token = None
-
-    if auth_header:
-        access_token = auth_header
-    elif capitalized_auth_header:
-        access_token = capitalized_auth_header
-
-    if not access_token:
-        logger.warning(
-            "Access token missing",
-            extra={"headers": headers},
-        )
-        return None
-
-    # Call Cognito to get user info
-    response = cognito_client.get_user(AccessToken=access_token)
-
-    # Parse attributes into a dict
-    user_attributes = {
-        attr["Name"]: attr["Value"] for attr in response["UserAttributes"]
-    }
-
-    # Extract user id
-    user_id = user_attributes.get("sub")
-
-    return user_id
-
-
-def connect_to_aurora_db(secrets_client, db_secret_arn):
-    # Retrieve secret
-    secret_resp = secrets_client.get_secret_value(SecretId=db_secret_arn)
-    secret = json.loads(secret_resp["SecretString"])
-
-    host = secret.get("host", "localhost")
-    port = secret.get("port", 5432)
-    username = secret.get("username", "postgres")
-    password = secret.get("password", "superSecretPass123")
-    dbname = secret.get("dbname", "postgres")
-
-    # Connect to Aurora Postgres
-    conn = psycopg2.connect(
-        host=host,
-        port=port,
-        user=username,
-        password=password,
-        dbname=dbname,
-        connect_timeout=5,
-    )
-
-    cursor = conn.cursor(cursor_factory=RealDictCursor)
-
-    return conn, cursor

@@ -2,7 +2,9 @@ import boto3
 import os
 import json
 from aws_lambda_powertools import Logger
-from middleware import middleware, _response, _cors_response, connect_to_aurora_db
+from middleware import middleware, _response, _cors_response
+import psycopg2
+from psycopg2.extras import RealDictCursor
 
 # Configure logging
 logger = Logger()
@@ -28,7 +30,7 @@ def lambda_handler(event, context):
         return cors_resp
 
     # Connect to Aurora DB
-    conn, cursor = connect_to_aurora_db(secrets_client, DB_SECRET_ARN)
+    conn, cursor = connect_to_aurora_db(secrets_client)
     cursor.execute("SELECT 1 AS alive;")
     result = cursor.fetchone()
 
@@ -42,3 +44,29 @@ def lambda_handler(event, context):
             "db_alive": result["alive"],
         },
     )
+
+
+def connect_to_aurora_db(secrets_client):
+    # Retrieve secret
+    secret_resp = secrets_client.get_secret_value(SecretId=DB_SECRET_ARN)
+    secret = json.loads(secret_resp["SecretString"])
+
+    host = secret.get("host", "localhost")
+    port = secret.get("port", 5432)
+    username = secret.get("username", "postgres")
+    password = secret.get("password", "superSecretPass123")
+    dbname = secret.get("dbname", "postgres")
+
+    # Connect to Aurora Postgres
+    conn = psycopg2.connect(
+        host=host,
+        port=port,
+        user=username,
+        password=password,
+        dbname=dbname,
+        connect_timeout=5,
+    )
+
+    cursor = conn.cursor(cursor_factory=RealDictCursor)
+
+    return conn, cursor
