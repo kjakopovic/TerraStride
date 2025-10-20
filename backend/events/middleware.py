@@ -140,7 +140,8 @@ def connect_to_aurora_db(secrets_client, db_secret_arn):
     return conn, cursor
 
 
-class Territory:
+# TODO: Define Event class
+class Event:
     def __init__(
         self,
         territory_id=None,

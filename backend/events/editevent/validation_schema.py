@@ -1,0 +1,63 @@
+schema = {
+    "type": "object",
+    "properties": {
+        "name": {
+            "type": "string",
+            "maxLength": 50,
+        },
+        "city": {
+            "type": "string",
+            "maxLength": 50,
+        },
+        "date": {
+            "type": "string",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}$",  # YYYY-MM-DD format
+        },
+        "startTime": {
+            "type": "string",
+            "pattern": "^\\d{2}:\\d{2}$",  # HH:MM format
+        },
+        "checkpoints": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "address": {"type": "string"},
+                    "lat": {"type": "number"},
+                    "lng": {"type": "number"},
+                    "start": {"type": "boolean"},
+                    "end": {"type": "boolean"},
+                },
+                "required": [
+                    "address",
+                    "lat",
+                    "lng",
+                    "start",
+                    "end",
+                ],
+                "additionalProperties": False,
+            },
+            "minItems": 2,
+        },
+    },
+    "required": [
+        "name",
+        "city",
+        "date",
+        "startTime",
+        "checkpoints",
+    ],
+    "additionalProperties": False,
+}
+
+path_params_schema = {
+    "type": "object",
+    "properties": {
+        "event_id": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$",  # uuid check, format uuid doesn't work
+        }
+    },
+    "required": ["event_id"],
+    "additionalProperties": False,
+}
