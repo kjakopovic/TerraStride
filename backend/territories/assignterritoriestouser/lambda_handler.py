@@ -57,6 +57,7 @@ def lambda_handler(event, context):
         Territory.from_dict(territory, user_id=user_id)
         for territory in territories_data
     ]
+    territory_count = 0
 
     # Connect to DB
     conn, cursor = connect_to_aurora_db(secrets_client, DB_SECRET_ARN)
