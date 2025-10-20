@@ -1,1 +1,1 @@
-ALTER TABLE territories ADD INDEX idx_user_id (user_id);
+CREATE INDEX idx_user_id ON territories (user_id);
