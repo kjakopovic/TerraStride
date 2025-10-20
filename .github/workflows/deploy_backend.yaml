@@ -67,6 +67,10 @@ jobs:
           aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws_region: ${{ env.AWS_REGION }}
 
+      - name: Setup cdk json file
+        working-directory: ${{ env.BACKEND_PATH }}
+        run: make generate-aurora-cdk
+
       - name: Deploy Aurora Service
         working-directory: ${{ env.BACKEND_PATH }}
         run: make deploy-aurora
@@ -103,6 +107,10 @@ jobs:
           aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws_region: ${{ env.AWS_REGION }}
 
+      - name: Setup cdk json file
+        working-directory: ${{ env.BACKEND_PATH }}
+        run: make generate-users-cdk
+
       - name: Deploy Users Service
         working-directory: ${{ env.BACKEND_PATH }}
         run: make deploy-users
@@ -138,6 +146,10 @@ jobs:
           aws_access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws_region: ${{ env.AWS_REGION }}
+
+      - name: Setup cdk json file
+        working-directory: ${{ env.BACKEND_PATH }}
+        run: make generate-territories-cdk
 
       - name: Deploy Territories Service
         working-directory: ${{ env.BACKEND_PATH }}
