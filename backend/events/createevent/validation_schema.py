@@ -25,19 +25,35 @@ schema = {
                     "address": {"type": "string"},
                     "lat": {"type": "number"},
                     "lng": {"type": "number"},
-                    "start": {"type": "boolean"},
-                    "end": {"type": "boolean"},
+                    "is_start": {"type": "boolean"},
+                    "is_end": {"type": "boolean"},
                 },
                 "required": [
                     "address",
                     "lat",
                     "lng",
-                    "start",
-                    "end",
+                    "is_start",
+                    "is_end",
                 ],
                 "additionalProperties": False,
             },
             "minItems": 2,
+        },
+        "trace": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "lat": {"type": "number"},
+                    "lng": {"type": "number"},
+                },
+                "required": [
+                    "lat",
+                    "lng",
+                ],
+                "additionalProperties": False,
+            },
+            "minItems": 1,
         },
     },
     "required": [
@@ -46,6 +62,7 @@ schema = {
         "date",
         "startTime",
         "checkpoints",
+        "trace",
     ],
     "additionalProperties": False,
 }
