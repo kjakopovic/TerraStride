@@ -170,8 +170,8 @@ def insert_checkpoints(cursor, event_id, checkpoints):
             cp["lat"],
             cp["lng"],
             idx + 1,
-            cp["start"],
-            cp["end"],
+            cp["is_start"],
+            cp["is_end"],
             event_id,
         )
         for idx, cp in enumerate(checkpoints)
