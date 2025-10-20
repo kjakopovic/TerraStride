@@ -218,12 +218,27 @@ class TerrastrideEventsStack(Stack):
         list_events_integration = apigw.LambdaIntegration(list_events_lambda)
 
         # API Gateway Resources and Methods
+
+        # GET /events/healthcheck → check is service active and healthy
         api.root.add_resource("healthcheck").add_method("GET", healthcheck_integration)
-        api.root.add_method("GET", list_events_integration)
-        api.root.add_method("POST", create_event_integration)
-        api.root.add_method("DELETE", delete_event_integration)
-        api.root.add_method("PUT", edit_event_integration)
+
+        # POST /events/attend → attend event
         api.root.add_resource("attend").add_method("POST", attend_event_integration)
+
+        # GET /events → list all events
+        api.root.add_method("GET", list_events_integration)
+
+        # POST /events → create event
+        api.root.add_method("POST", create_event_integration)
+
+        # /events/{event_id} resource
+        event_id_resource = api.root.add_resource("{event_id}")
+
+        # PUT /events/{event_id} → edit specific event
+        event_id_resource.add_method("PUT", edit_event_integration)
+
+        # DELETE /events/{event_id} → delete specific event
+        event_id_resource.add_method("DELETE", delete_event_integration)
 
         # Outputs
         CfnOutput(
