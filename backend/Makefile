@@ -63,3 +63,9 @@ deploy-territories:deploy
 
 generate-territories-cdk:
 	cd scripts && python3 generate_cdk_json.py -e ../.env -o ../territories/cdk.json
+
+generate-users-cdk:
+	cd scripts && python3 generate_cdk_json.py -e ../.env -o ../users/cdk.json
+
+generate-aurora-cdk:
+	cd scripts && python3 generate_cdk_json.py -e ../.env -o ../aurora/cdk.json
