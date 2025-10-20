@@ -12,7 +12,7 @@ from aws_cdk import (
 from constructs import Construct
 
 
-class TerrastrideTerritoriesStack(Stack):
+class TerrastrideEventsStack(Stack):
     def __init__(self, scope: Construct, construct_id: str, **kwargs):
         super().__init__(scope, construct_id, **kwargs)
 
@@ -60,10 +60,10 @@ class TerrastrideTerritoriesStack(Stack):
             timeout=Duration.seconds(30),
         )
 
-        # List territories Lambda Function
-        list_territories_lambda = _lambda.Function(
+        # Attend event Lambda Function
+        attend_event_lambda = _lambda.Function(
             self,
-            "ListTerritoriesLambda",
+            "AttendEventLambda",
             runtime=_lambda.Runtime.PYTHON_3_12,
             handler="lambda_handler.lambda_handler",
             code=_lambda.Code.from_asset(
@@ -73,7 +73,7 @@ class TerrastrideTerritoriesStack(Stack):
                     "command": [
                         "bash",
                         "-c",
-                        "cd listterritories && pip install aws-lambda-powertools fastjsonschema psycopg2-binary -t /asset-output && cp -r . /asset-output && cp ../middleware.py /asset-output",
+                        "cd attendevent && pip install aws-lambda-powertools fastjsonschema psycopg2-binary -t /asset-output && cp -r . /asset-output && cp ../middleware.py /asset-output",
                     ],
                 },
             ),
@@ -86,9 +86,9 @@ class TerrastrideTerritoriesStack(Stack):
             timeout=Duration.seconds(30),
         )
 
-        assign_territories_lambda = _lambda.Function(
+        create_event_lambda = _lambda.Function(
             self,
-            "AssignTerritoriesLambda",
+            "CreateEventLambda",
             runtime=_lambda.Runtime.PYTHON_3_12,
             handler="lambda_handler.lambda_handler",
             code=_lambda.Code.from_asset(
@@ -98,7 +98,82 @@ class TerrastrideTerritoriesStack(Stack):
                     "command": [
                         "bash",
                         "-c",
-                        "cd assignterritoriestouser && pip install aws-lambda-powertools fastjsonschema psycopg2-binary -t /asset-output && cp -r . /asset-output && cp ../middleware.py /asset-output",
+                        "cd createevent && pip install aws-lambda-powertools fastjsonschema psycopg2-binary -t /asset-output && cp -r . /asset-output && cp ../middleware.py /asset-output",
+                    ],
+                },
+            ),
+            vpc=vpc,
+            security_groups=[lambda_sg],
+            environment={
+                "POWERTOOLS_SERVICE_NAME": "territories",
+                "DB_SECRET_ARN": db_secret.secret_name,
+            },
+            timeout=Duration.seconds(30),
+        )
+
+        delete_event_lambda = _lambda.Function(
+            self,
+            "DeleteEventLambda",
+            runtime=_lambda.Runtime.PYTHON_3_12,
+            handler="lambda_handler.lambda_handler",
+            code=_lambda.Code.from_asset(
+                ".",
+                bundling={
+                    "image": _lambda.Runtime.PYTHON_3_12.bundling_image,
+                    "command": [
+                        "bash",
+                        "-c",
+                        "cd deleteevent && pip install aws-lambda-powertools fastjsonschema psycopg2-binary -t /asset-output && cp -r . /asset-output && cp ../middleware.py /asset-output",
+                    ],
+                },
+            ),
+            vpc=vpc,
+            security_groups=[lambda_sg],
+            environment={
+                "POWERTOOLS_SERVICE_NAME": "territories",
+                "DB_SECRET_ARN": db_secret.secret_name,
+            },
+            timeout=Duration.seconds(30),
+        )
+
+        edit_event_lambda = _lambda.Function(
+            self,
+            "EditEventLambda",
+            runtime=_lambda.Runtime.PYTHON_3_12,
+            handler="lambda_handler.lambda_handler",
+            code=_lambda.Code.from_asset(
+                ".",
+                bundling={
+                    "image": _lambda.Runtime.PYTHON_3_12.bundling_image,
+                    "command": [
+                        "bash",
+                        "-c",
+                        "cd editevent && pip install aws-lambda-powertools fastjsonschema psycopg2-binary -t /asset-output && cp -r . /asset-output && cp ../middleware.py /asset-output",
+                    ],
+                },
+            ),
+            vpc=vpc,
+            security_groups=[lambda_sg],
+            environment={
+                "POWERTOOLS_SERVICE_NAME": "territories",
+                "DB_SECRET_ARN": db_secret.secret_name,
+            },
+            timeout=Duration.seconds(30),
+        )
+
+        list_events_lambda = _lambda.Function(
+            self,
+            "ListEventsLambda",
+            runtime=_lambda.Runtime.PYTHON_3_12,
+            handler="lambda_handler.lambda_handler",
+            code=_lambda.Code.from_asset(
+                ".",
+                bundling={
+                    "image": _lambda.Runtime.PYTHON_3_12.bundling_image,
+                    "command": [
+                        "bash",
+                        "-c",
+                        "cd listevents && pip install aws-lambda-powertools fastjsonschema psycopg2-binary -t /asset-output && cp -r . /asset-output && cp ../middleware.py /asset-output",
                     ],
                 },
             ),
@@ -113,17 +188,20 @@ class TerrastrideTerritoriesStack(Stack):
 
         # Grant Lambda read access to the DB secret
         db_secret.grant_read(healthcheck_lambda)
-        db_secret.grant_read(list_territories_lambda)
-        db_secret.grant_read(assign_territories_lambda)
+        db_secret.grant_read(attend_event_lambda)
+        db_secret.grant_read(create_event_lambda)
+        db_secret.grant_read(delete_event_lambda)
+        db_secret.grant_read(edit_event_lambda)
+        db_secret.grant_read(list_events_lambda)
 
         # API Gateway
         api = apigw.RestApi(
             self,
-            "TerrastrideTerritoriesApi",
-            rest_api_name="Terrastride Territories API",
-            description="Terrastride Territories Services API",
+            "TerrastrideEventsApi",
+            rest_api_name="Terrastride Events API",
+            description="Terrastride Events Services API",
             deploy=True,
-            deploy_options=apigw.StageOptions(stage_name="territories"),
+            deploy_options=apigw.StageOptions(stage_name="events"),
             default_cors_preflight_options=apigw.CorsOptions(
                 allow_origins=apigw.Cors.ALL_ORIGINS,
                 allow_methods=apigw.Cors.ALL_METHODS,
@@ -133,29 +211,33 @@ class TerrastrideTerritoriesStack(Stack):
 
         # API Gateway Integrations
         healthcheck_integration = apigw.LambdaIntegration(healthcheck_lambda)
-        list_territories_integration = apigw.LambdaIntegration(list_territories_lambda)
-        assign_territories_integration = apigw.LambdaIntegration(
-            assign_territories_lambda
-        )
+        attend_event_integration = apigw.LambdaIntegration(attend_event_lambda)
+        create_event_integration = apigw.LambdaIntegration(create_event_lambda)
+        delete_event_integration = apigw.LambdaIntegration(delete_event_lambda)
+        edit_event_integration = apigw.LambdaIntegration(edit_event_lambda)
+        list_events_integration = apigw.LambdaIntegration(list_events_lambda)
 
         # API Gateway Resources and Methods
         api.root.add_resource("healthcheck").add_method("GET", healthcheck_integration)
-        api.root.add_method("GET", list_territories_integration)
-        api.root.add_method("POST", assign_territories_integration)
+        api.root.add_method("GET", list_events_integration)
+        api.root.add_method("POST", create_event_integration)
+        api.root.add_method("DELETE", delete_event_integration)
+        api.root.add_method("PUT", edit_event_integration)
+        api.root.add_resource("attend").add_method("POST", attend_event_integration)
 
         # Outputs
         CfnOutput(
             self,
-            "TerrastrideTerritoriesApiEndpoint",
-            description="Terrastride Territories API Gateway URL",
-            value=f"https://{api.rest_api_id}.execute-api.{self.region}.amazonaws.com/territories",
+            "TerrastrideEventsApiEndpoint",
+            description="Terrastride Events API Gateway URL",
+            value=f"https://{api.rest_api_id}.execute-api.{self.region}.amazonaws.com/events",
         )
 
 
 app = App()
-TerrastrideTerritoriesStack(
+TerrastrideEventsStack(
     app,
-    "TerrastrideTerritoriesStack",
+    "TerrastrideEventsStack",
     env={
         "account": os.getenv("CDK_DEFAULT_ACCOUNT"),
         "region": os.getenv("CDK_DEFAULT_REGION", "eu-central-1"),
