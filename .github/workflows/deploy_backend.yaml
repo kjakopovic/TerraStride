@@ -9,12 +9,39 @@ on:
       - ".github/workflows/deploy_backend.yaml"
 
 env:
-  AWS_REGION: "eu-central-1"
   BACKEND_PATH: backend
+  vpcId: ${{ secrets.AURORA_VPC_ID }}
+  auroraSgId: ${{ secrets.AURORA_SG_ID }}
+  dbSecretName: ${{ secrets.AURORA_DB_SECRET_NAME }}
+  awsRegion: "eu-central-1"
 
 jobs:
-  deploy_users:
+  filter:
     runs-on: ubuntu-latest
+    outputs:
+      users: ${{ steps.filter.outputs.users }}
+      territories: ${{ steps.filter.outputs.territories }}
+      aurora: ${{ steps.filter.outputs.aurora }}
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Filter folder changes
+        id: filter
+        uses: dorny/paths-filter@v2
+        with:
+          token: ${{ secrets.PAT_TOKEN }}
+          filters: |
+            users:
+              - 'backend/users/**'
+            territories:
+              - 'backend/territories/**'
+            aurora:
+              - 'backend/aurora/**'
+
+  deploy_aurora:
+    runs-on: ubuntu-latest
+    needs: filter
+    if: ${{ needs.filter.outputs.aurora == 'true' }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
@@ -30,7 +57,7 @@ jobs:
           node-version: "24"
 
       - name: Install Python packages
-        run: pip install boto3 aws-cdk-lib constructs
+        run: pip install boto3 aws-cdk-lib constructs dotenv
         shell: bash
 
       - name: Install AWS CDK CLI
@@ -41,8 +68,92 @@ jobs:
         with:
           aws_access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws_region: ${{ env.AWS_REGION }}
+          aws_region: ${{ env.awsRegion }}
+
+      - name: Setup cdk json file
+        working-directory: ${{ env.BACKEND_PATH }}
+        run: make generate-aurora-cdk
+
+      - name: Deploy Aurora Service
+        working-directory: ${{ env.BACKEND_PATH }}
+        run: make deploy-aurora
+
+  deploy_users:
+    runs-on: ubuntu-latest
+    needs: filter
+    if: ${{ needs.filter.outputs.users == 'true' }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v3
+        with:
+          python-version: "3.12"
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: "24"
+
+      - name: Install Python packages
+        run: pip install boto3 aws-cdk-lib constructs dotenv
+        shell: bash
+
+      - name: Install AWS CDK CLI
+        run: npm install -g aws-cdk
+
+      - name: Set up AWS CLI
+        uses: ./.github/composite/aws_setup
+        with:
+          aws_access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws_region: ${{ env.awsRegion }}
+
+      - name: Setup cdk json file
+        working-directory: ${{ env.BACKEND_PATH }}
+        run: make generate-users-cdk
 
       - name: Deploy Users Service
         working-directory: ${{ env.BACKEND_PATH }}
         run: make deploy-users
+
+  deploy_territories:
+    runs-on: ubuntu-latest
+    needs: filter
+    if: ${{ needs.filter.outputs.territories == 'true' }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v3
+        with:
+          python-version: "3.12"
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: "24"
+
+      - name: Install Python packages
+        run: pip install boto3 aws-cdk-lib constructs dotenv
+        shell: bash
+
+      - name: Install AWS CDK CLI
+        run: npm install -g aws-cdk
+
+      - name: Set up AWS CLI
+        uses: ./.github/composite/aws_setup
+        with:
+          aws_access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws_region: ${{ env.awsRegion }}
+
+      - name: Setup cdk json file
+        working-directory: ${{ env.BACKEND_PATH }}
+        run: make generate-territories-cdk
+
+      - name: Deploy Territories Service
+        working-directory: ${{ env.BACKEND_PATH }}
+        run: make deploy-territories
