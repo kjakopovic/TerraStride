@@ -1,5 +1,11 @@
 # Backend Setup
 
+## TODO:
+
+- we need to add mining logic and squares calculations
+- we need to add ticket consumptions (when user buys a ticket, they can consume it, once they consume it they run starts)
+- we need to add strava runs fetching for territory collection
+
 ## Architecture
 
 This setup is for microservices setup in lambdas with cdk. Cdk is used for quick and easy deployment. Lambdas are representing endpoints which are being called on some event.

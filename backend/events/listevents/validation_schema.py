@@ -9,10 +9,14 @@ schema = {
             "type": "string",
             "pattern": r"^-?\d+\.\d+$",
         },
+        "search": {
+            "type": "string",
+        },
     },
     "required": [
         "lat",
         "lng",
+        "search",
     ],
     "additionalProperties": False,
 }

@@ -35,6 +35,10 @@ destroy:
 	@if [ -z "$(SERVICE)" ]; then echo "❌ Please provide SERVICE=<name>"; exit 1; fi
 	cd ./$(SERVICE) && cdk destroy --region $(AWS_REGION)
 
+generate-cdk:
+	@if [ -z "$(SERVICE)" ]; then echo "❌ Please provide SERVICE=<name>"; exit 1; fi
+	cd ./scripts && python3 generate_cdk_json.py -e ../.env -o ../$(SERVICE)/cdk.json -k vpcId auroraSgId dbSecretName awsRegion userPoolId
+
 # ---------------------------
 # 💡 Shortcuts
 # ---------------------------
@@ -57,15 +61,24 @@ build-territories:build
 deploy-territories:SERVICE=territories
 deploy-territories:deploy
 
+build-events:SERVICE=events
+build-events:build
+
+deploy-events:SERVICE=events
+deploy-events:deploy
+
 # ---------------------------
 # 💡 Scripts
 # ---------------------------
 
-generate-territories-cdk:
-	cd scripts && python3 generate_cdk_json.py -e ../.env -o ../territories/cdk.json -k vpcId auroraSgId dbSecretName awsRegion
+generate-territories-cdk: SERVICE=territories
+generate-territories-cdk: generate-cdk
 
-generate-users-cdk:
-	cd scripts && python3 generate_cdk_json.py -e ../.env -o ../users/cdk.json -k vpcId auroraSgId dbSecretName awsRegion
+generate-users-cdk: SERVICE=users
+generate-users-cdk: generate-cdk
 
-generate-aurora-cdk:
-	cd scripts && python3 generate_cdk_json.py -e ../.env -o ../aurora/cdk.json -k vpcId auroraSgId dbSecretName awsRegion
+generate-aurora-cdk: SERVICE=aurora
+generate-aurora-cdk: generate-cdk
+
+generate-events-cdk: SERVICE=events
+generate-events-cdk: generate-cdk

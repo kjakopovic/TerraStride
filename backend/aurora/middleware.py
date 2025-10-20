@@ -38,7 +38,7 @@ def middleware(handler, event, context):
 
     except SchemaValidationError as e:
         logger.warning(
-            "Login validation failed",
+            "schema validation failed",
             extra={"status": "error", "reason": "schema_failed"},
         )
         return _response(400, {"status": "error", "message": str(e)})
