@@ -1,6 +1,6 @@
 CREATE TABLE IF NOT EXISTS territories (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id TEXT UNIQUE NOT NULL,
+    user_id TEXT NOT NULL,
     average_pace DOUBLE PRECISION,
     color TEXT,
     left_top_corner_lat DOUBLE PRECISION NOT NULL,
