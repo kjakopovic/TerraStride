@@ -60,8 +60,61 @@ class TerrastrideTerritoriesStack(Stack):
             timeout=Duration.seconds(30),
         )
 
+        # List territories Lambda Function
+        list_territories_lambda = _lambda.Function(
+            self,
+            "ListTerritoriesLambda",
+            runtime=_lambda.Runtime.PYTHON_3_12,
+            handler="lambda_handler.lambda_handler",
+            code=_lambda.Code.from_asset(
+                ".",
+                bundling={
+                    "image": _lambda.Runtime.PYTHON_3_12.bundling_image,
+                    "command": [
+                        "bash",
+                        "-c",
+                        "cd listterritories && pip install aws-lambda-powertools fastjsonschema psycopg2-binary -t /asset-output && cp -r . /asset-output && cp ../middleware.py /asset-output",
+                    ],
+                },
+            ),
+            vpc=vpc,
+            security_groups=[lambda_sg],
+            environment={
+                "POWERTOOLS_SERVICE_NAME": "territories",
+                "DB_SECRET_ARN": db_secret.secret_name,
+            },
+            timeout=Duration.seconds(30),
+        )
+
+        assign_territories_lambda = _lambda.Function(
+            self,
+            "AssignTerritoriesLambda",
+            runtime=_lambda.Runtime.PYTHON_3_12,
+            handler="lambda_handler.lambda_handler",
+            code=_lambda.Code.from_asset(
+                ".",
+                bundling={
+                    "image": _lambda.Runtime.PYTHON_3_12.bundling_image,
+                    "command": [
+                        "bash",
+                        "-c",
+                        "cd assignterritoriestouser && pip install aws-lambda-powertools fastjsonschema psycopg2-binary -t /asset-output && cp -r . /asset-output && cp ../middleware.py /asset-output",
+                    ],
+                },
+            ),
+            vpc=vpc,
+            security_groups=[lambda_sg],
+            environment={
+                "POWERTOOLS_SERVICE_NAME": "territories",
+                "DB_SECRET_ARN": db_secret.secret_name,
+            },
+            timeout=Duration.seconds(30),
+        )
+
         # Grant Lambda read access to the DB secret
         db_secret.grant_read(healthcheck_lambda)
+        db_secret.grant_read(list_territories_lambda)
+        db_secret.grant_read(assign_territories_lambda)
 
         # API Gateway
         api = apigw.RestApi(
@@ -80,9 +133,15 @@ class TerrastrideTerritoriesStack(Stack):
 
         # API Gateway Integrations
         healthcheck_integration = apigw.LambdaIntegration(healthcheck_lambda)
+        list_territories_integration = apigw.LambdaIntegration(list_territories_lambda)
+        assign_territories_integration = apigw.LambdaIntegration(
+            assign_territories_lambda
+        )
 
         # API Gateway Resources and Methods
         api.root.add_resource("healthcheck").add_method("GET", healthcheck_integration)
+        api.root.add_method("GET", list_territories_integration)
+        api.root.add_method("POST", assign_territories_integration)
 
         # Outputs
         CfnOutput(

@@ -138,3 +138,89 @@ def connect_to_aurora_db(secrets_client, db_secret_arn):
     cursor = conn.cursor(cursor_factory=RealDictCursor)
 
     return conn, cursor
+
+
+class Territory:
+    def __init__(
+        self,
+        territory_id=None,
+        user_id=None,
+        average_pace=None,
+        color=None,
+        left_top_corner_lat=None,
+        left_top_corner_lng=None,
+        left_bottom_corner_lat=None,
+        left_bottom_corner_lng=None,
+        right_top_corner_lat=None,
+        right_top_corner_lng=None,
+        right_bottom_corner_lat=None,
+        right_bottom_corner_lng=None,
+    ):
+        self.territory_id = territory_id
+        self.user_id = user_id
+        self.user = {}
+        self.color = color
+
+        # Ensure average_pace is stored as float if present
+        self.average_pace = float(average_pace) if average_pace is not None else None
+
+        # Corners (float values)
+        self.left_top_corner_lat = (
+            float(left_top_corner_lat) if left_top_corner_lat is not None else None
+        )
+        self.left_top_corner_lng = (
+            float(left_top_corner_lng) if left_top_corner_lng is not None else None
+        )
+        self.left_bottom_corner_lat = (
+            float(left_bottom_corner_lat)
+            if left_bottom_corner_lat is not None
+            else None
+        )
+        self.left_bottom_corner_lng = (
+            float(left_bottom_corner_lng)
+            if left_bottom_corner_lng is not None
+            else None
+        )
+        self.right_top_corner_lat = (
+            float(right_top_corner_lat) if right_top_corner_lat is not None else None
+        )
+        self.right_top_corner_lng = (
+            float(right_top_corner_lng) if right_top_corner_lng is not None else None
+        )
+        self.right_bottom_corner_lat = (
+            float(right_bottom_corner_lat)
+            if right_bottom_corner_lat is not None
+            else None
+        )
+        self.right_bottom_corner_lng = (
+            float(right_bottom_corner_lng)
+            if right_bottom_corner_lng is not None
+            else None
+        )
+
+    @classmethod
+    def from_dict(cls, data: dict, user_id=None):
+        """
+        Create a Territory object from a dictionary that matches the schema.
+        Ignores unexpected keys.
+        """
+        allowed_fields = {
+            "territory_id",
+            "average_pace",
+            "color",
+            "left_top_corner_lat",
+            "left_top_corner_lng",
+            "left_bottom_corner_lat",
+            "left_bottom_corner_lng",
+            "right_top_corner_lat",
+            "right_top_corner_lng",
+            "right_bottom_corner_lat",
+            "right_bottom_corner_lng",
+        }
+
+        filtered_data = {k: v for k, v in data.items() if k in allowed_fields}
+        return cls(**filtered_data, user_id=user_id)
+
+    def to_dict(self):
+        """Optional: serialize to dict (for debugging or DB inserts)."""
+        return self.__dict__
