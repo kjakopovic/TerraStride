@@ -35,7 +35,7 @@ CREATE TABLE event_trace (
     created_at TIMESTAMP DEFAULT NOW(),
     event_id UUID NOT NULL,
     FOREIGN KEY (event_id) REFERENCES events(id) ON DELETE CASCADE
-)
+);
 
 CREATE TABLE event_tickets (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
