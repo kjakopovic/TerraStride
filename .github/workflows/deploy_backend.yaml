@@ -54,7 +54,7 @@ jobs:
           node-version: "24"
 
       - name: Install Python packages
-        run: pip install boto3 aws-cdk-lib constructs
+        run: pip install boto3 aws-cdk-lib constructs dotenv
         shell: bash
 
       - name: Install AWS CDK CLI
@@ -94,7 +94,7 @@ jobs:
           node-version: "24"
 
       - name: Install Python packages
-        run: pip install boto3 aws-cdk-lib constructs
+        run: pip install boto3 aws-cdk-lib constructs dotenv
         shell: bash
 
       - name: Install AWS CDK CLI
@@ -134,7 +134,7 @@ jobs:
           node-version: "24"
 
       - name: Install Python packages
-        run: pip install boto3 aws-cdk-lib constructs
+        run: pip install boto3 aws-cdk-lib constructs dotenv
         shell: bash
 
       - name: Install AWS CDK CLI
