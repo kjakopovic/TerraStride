@@ -1,0 +1,88 @@
+export const STRINGS = {
+  AUTH: {
+    APP_NAME: "TerraStride",
+    LOGIN: {
+      TITLE: "Log into your account and start making your runs count",
+      SUBTITLE: "Enter your details below to continue to your account",
+      EMAIL_LABEL: "Email",
+      EMAIL_PLACEHOLDER: "Enter your email",
+      PASSWORD_LABEL: "Password",
+      PASSWORD_PLACEHOLDER: "Enter your password",
+      CTA: "Log In",
+      GOOGLE_CTA: "Log In with Google",
+      APPLE_CTA: "Log In with Apple",
+      NO_ACCOUNT: "Don't have an account?",
+      SIGN_UP: "Sign Up",
+      TOGGLE_LOCALE: "Switch language (temp)",
+    },
+    REGISTER: {
+      TITLE: "Create your account and start tracking every run",
+      SUBTITLE: "Fill in your details below to get started",
+      USERNAME_LABEL: "Username",
+      USERNAME_PLACEHOLDER: "Enter your username",
+      EMAIL_LABEL: "Email",
+      EMAIL_PLACEHOLDER: "Enter your email",
+      PASSWORD_LABEL: "Password",
+      PASSWORD_PLACEHOLDER: "Create your password",
+      CTA: "Create Account",
+      HAVE_ACCOUNT: "Already have an account?",
+      SIGN_IN: "Log In",
+    },
+    WALLET_PASSPHRASE: {
+      TITLE: "Secure your wallet with a recovery passphrase",
+      SUBTITLE: "Write this phrase down and store it somewhere safe.",
+      DESCRIPTION:
+        "Anyone with this phrase can access your wallet. Never share it and keep copies offline.",
+      INPUT_LABEL: "Your recovery passphrase",
+      CTA: "I’ve written it down",
+      DISCLAIMER:
+        "You’ll need this passphrase to restore access if you lose your device.",
+    },
+    SECURITY_CODE: {
+      TITLE: "Set a 6-digit code to secure your app",
+      SUBTITLE: "Enter a code you’ll use to unlock TerraStride",
+      CTA: "Set Code",
+    },
+    COMMON: {
+      OR: "or",
+    },
+  },
+  HOME: {
+    HEADER: {
+      GREETING: "Hello",
+      DEFAULT_USER_NAME: "John",
+      GUEST: "Guest",
+    },
+    BALANCE_CARD: {
+      TITLE: "My Balance",
+      VIEW_WALLET: "View Wallet",
+      DAILY_GAIN_LABEL: "+12 $TERRA Today",
+      STAT_LABEL: "Amount",
+      TERRITORIES_TITLE: "Territories",
+      EVENT_EARNINGS_TITLE: "Event earnings",
+    },
+    EVENTS: {
+      TITLE: "Upcoming events",
+      ITEMS: [
+        {
+          ID: "city-championship",
+          TITLE: "City Championship",
+          START_TIME: "2024-07-15 10:00 AM",
+          PRIZE_POOL: 5000,
+        },
+        {
+          ID: "regional-qualifiers",
+          TITLE: "Regional Qualifiers",
+          START_TIME: "2024-07-20 02:00 PM",
+          PRIZE_POOL: 2000,
+        },
+        {
+          ID: "national-finals",
+          TITLE: "National Finals",
+          START_TIME: "2024-08-01 09:00 AM",
+          PRIZE_POOL: 10000,
+        },
+      ],
+    },
+  },
+} as const;
