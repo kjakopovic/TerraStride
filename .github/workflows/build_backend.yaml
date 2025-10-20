@@ -9,8 +9,11 @@ on:
       - ".github/workflows/build_backend.yaml"
 
 env:
-  AWS_REGION: "eu-central-1"
   BACKEND_PATH: backend
+  vpcId: ${{ secrets.AURORA_VPC_ID }}
+  auroraSgId: ${{ secrets.AURORA_SG_ID }}
+  dbSecretName: ${{ secrets.AURORA_DB_SECRET_NAME }}
+  awsRegion: "eu-central-1"
 
 jobs:
   filter:
@@ -65,7 +68,7 @@ jobs:
         with:
           aws_access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws_region: ${{ env.AWS_REGION }}
+          aws_region: ${{ env.awsRegion }}
 
       - name: Setup cdk json file
         working-directory: ${{ env.BACKEND_PATH }}
@@ -109,7 +112,7 @@ jobs:
         with:
           aws_access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws_region: ${{ env.AWS_REGION }}
+          aws_region: ${{ env.awsRegion }}
 
       - name: Setup cdk json file
         working-directory: ${{ env.BACKEND_PATH }}
@@ -153,7 +156,7 @@ jobs:
         with:
           aws_access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws_region: ${{ env.AWS_REGION }}
+          aws_region: ${{ env.awsRegion }}
 
       - name: Setup cdk json file
         working-directory: ${{ env.BACKEND_PATH }}

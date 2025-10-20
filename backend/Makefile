@@ -62,10 +62,10 @@ deploy-territories:deploy
 # ---------------------------
 
 generate-territories-cdk:
-	cd scripts && python3 generate_cdk_json.py -e ../.env -o ../territories/cdk.json
+	cd scripts && python3 generate_cdk_json.py -e ../.env -o ../territories/cdk.json -k vpcId auroraSgId dbSecretName awsRegion
 
 generate-users-cdk:
-	cd scripts && python3 generate_cdk_json.py -e ../.env -o ../users/cdk.json
+	cd scripts && python3 generate_cdk_json.py -e ../.env -o ../users/cdk.json -k vpcId auroraSgId dbSecretName awsRegion
 
 generate-aurora-cdk:
-	cd scripts && python3 generate_cdk_json.py -e ../.env -o ../aurora/cdk.json
+	cd scripts && python3 generate_cdk_json.py -e ../.env -o ../aurora/cdk.json -k vpcId auroraSgId dbSecretName awsRegion
