@@ -46,4 +46,4 @@ CREATE TABLE event_tickets (
     user_id VARCHAR(255) NOT NULL,
     event_id UUID NOT NULL,
     FOREIGN KEY (event_id) REFERENCES events(id) ON DELETE CASCADE
-)
+);
