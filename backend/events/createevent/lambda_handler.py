@@ -54,6 +54,7 @@ def lambda_handler(event, context):
     # Extract main event info
     name = event_body["name"]
     city = event_body["city"]
+    entry_fee = event_body["entry_fee"]
     date_str = event_body["date"]  # YYYY-MM-DD
     start_time = event_body["startTime"]  # HH:MM
 
@@ -72,7 +73,9 @@ def lambda_handler(event, context):
     try:
         # Insert the main event
         event_id = str(uuid.uuid4())
-        insert_event(cursor, event_id, name, city, start_datetime, end_datetime)
+        insert_event(
+            cursor, event_id, name, city, start_datetime, end_datetime, entry_fee
+        )
 
         # Insert checkpoints and trace points
         insert_checkpoints(cursor, event_id, checkpoints)
@@ -107,13 +110,13 @@ def lambda_handler(event, context):
     )
 
 
-def insert_event(cursor, event_id, name, city, startdate, enddate):
+def insert_event(cursor, event_id, name, city, startdate, enddate, entry_fee):
     """Insert the main event record."""
     query = """
-        INSERT INTO events (id, name, city, startdate, enddate)
-        VALUES (%s, %s, %s, %s, %s)
+        INSERT INTO events (id, name, city, startdate, enddate, entry_fee)
+        VALUES (%s, %s, %s, %s, %s, %s)
     """
-    cursor.execute(query, (event_id, name, city, startdate, enddate))
+    cursor.execute(query, (event_id, name, city, startdate, enddate, entry_fee))
 
 
 def insert_checkpoints(cursor, event_id, checkpoints):

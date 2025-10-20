@@ -19,6 +19,7 @@ class TerrastrideEventsStack(Stack):
         vpc_id = self.node.try_get_context("vpcId")
         sg_id = self.node.try_get_context("auroraSgId")
         db_secret_name = self.node.try_get_context("dbSecretName")
+        user_pool_id = self.node.try_get_context("userPoolId")
 
         # Reference the Secret dynamically
         db_secret = sm.Secret.from_secret_name_v2(self, "DBSecret", db_secret_name)
@@ -54,7 +55,7 @@ class TerrastrideEventsStack(Stack):
             vpc=vpc,
             security_groups=[lambda_sg],
             environment={
-                "POWERTOOLS_SERVICE_NAME": "territories",
+                "POWERTOOLS_SERVICE_NAME": "events",
                 "DB_SECRET_ARN": db_secret.secret_name,
             },
             timeout=Duration.seconds(30),
@@ -80,8 +81,9 @@ class TerrastrideEventsStack(Stack):
             vpc=vpc,
             security_groups=[lambda_sg],
             environment={
-                "POWERTOOLS_SERVICE_NAME": "territories",
+                "POWERTOOLS_SERVICE_NAME": "events",
                 "DB_SECRET_ARN": db_secret.secret_name,
+                "USER_POOL_ID": user_pool_id,
             },
             timeout=Duration.seconds(30),
         )
@@ -105,8 +107,9 @@ class TerrastrideEventsStack(Stack):
             vpc=vpc,
             security_groups=[lambda_sg],
             environment={
-                "POWERTOOLS_SERVICE_NAME": "territories",
+                "POWERTOOLS_SERVICE_NAME": "events",
                 "DB_SECRET_ARN": db_secret.secret_name,
+                "USER_POOL_ID": user_pool_id,
             },
             timeout=Duration.seconds(30),
         )
@@ -130,8 +133,9 @@ class TerrastrideEventsStack(Stack):
             vpc=vpc,
             security_groups=[lambda_sg],
             environment={
-                "POWERTOOLS_SERVICE_NAME": "territories",
+                "POWERTOOLS_SERVICE_NAME": "events",
                 "DB_SECRET_ARN": db_secret.secret_name,
+                "USER_POOL_ID": user_pool_id,
             },
             timeout=Duration.seconds(30),
         )
@@ -155,8 +159,9 @@ class TerrastrideEventsStack(Stack):
             vpc=vpc,
             security_groups=[lambda_sg],
             environment={
-                "POWERTOOLS_SERVICE_NAME": "territories",
+                "POWERTOOLS_SERVICE_NAME": "events",
                 "DB_SECRET_ARN": db_secret.secret_name,
+                "USER_POOL_ID": user_pool_id,
             },
             timeout=Duration.seconds(30),
         )
@@ -180,8 +185,9 @@ class TerrastrideEventsStack(Stack):
             vpc=vpc,
             security_groups=[lambda_sg],
             environment={
-                "POWERTOOLS_SERVICE_NAME": "territories",
+                "POWERTOOLS_SERVICE_NAME": "events",
                 "DB_SECRET_ARN": db_secret.secret_name,
+                "USER_POOL_ID": user_pool_id,
             },
             timeout=Duration.seconds(30),
         )

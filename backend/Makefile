@@ -37,7 +37,7 @@ destroy:
 
 generate-cdk:
 	@if [ -z "$(SERVICE)" ]; then echo "❌ Please provide SERVICE=<name>"; exit 1; fi
-	cd ./scripts && python3 generate_cdk_json.py -e ../.env -o ../$(SERVICE)/cdk.json -k vpcId auroraSgId dbSecretName awsRegion
+	cd ./scripts && python3 generate_cdk_json.py -e ../.env -o ../$(SERVICE)/cdk.json -k vpcId auroraSgId dbSecretName awsRegion userPoolId
 
 # ---------------------------
 # 💡 Shortcuts

@@ -9,6 +9,10 @@ schema = {
             "type": "string",
             "maxLength": 50,
         },
+        "entry_fee": {
+            "type": "number",
+            "minimum": 0,
+        },
         "date": {
             "type": "string",
             "pattern": "^\\d{4}-\\d{2}-\\d{2}$",  # YYYY-MM-DD format

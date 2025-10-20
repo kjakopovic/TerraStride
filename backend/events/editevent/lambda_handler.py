@@ -60,6 +60,7 @@ def lambda_handler(event, context):
     city = body["city"]
     date_str = body["date"]
     start_time = body["startTime"]
+    entry_fee = body["entry_fee"]
     checkpoints = body["checkpoints"]
     trace_points = body["trace"]
 
@@ -86,7 +87,9 @@ def lambda_handler(event, context):
             )
 
         # Perform event update
-        update_event(cursor, event_id, name, city, start_datetime, end_datetime)
+        update_event(
+            cursor, event_id, name, city, start_datetime, end_datetime, entry_fee
+        )
 
         # Soft delete old checkpoints and traces
         soft_delete_related_records(cursor, event_id)
@@ -124,7 +127,7 @@ def lambda_handler(event, context):
     )
 
 
-def update_event(cursor, event_id, name, city, startdate, enddate):
+def update_event(cursor, event_id, name, city, startdate, enddate, entry_fee):
     """Update event core details."""
     query = """
         UPDATE events
@@ -132,10 +135,11 @@ def update_event(cursor, event_id, name, city, startdate, enddate):
             city = %s,
             startdate = %s,
             enddate = %s,
+            entry_fee = %s,
             updated_at = NOW()
         WHERE id = %s;
     """
-    cursor.execute(query, (name, city, startdate, enddate, event_id))
+    cursor.execute(query, (name, city, startdate, enddate, entry_fee, event_id))
 
 
 def soft_delete_related_records(cursor, event_id):
