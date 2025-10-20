@@ -5,8 +5,8 @@ CREATE TABLE events (
     entry_fee DECIMAL(10,2),
     lat VARCHAR(255),
     lng VARCHAR(255),
-    startdate DATETIME NOT NULL,
-    enddate DATETIME NOT NULL,
+    startdate TIMESTAMP NOT NULL,
+    enddate TIMESTAMP NOT NULL,
     deleted_at TIMESTAMP DEFAULT NULL,
     updated_at TIMESTAMP DEFAULT NOW(),
     created_at TIMESTAMP DEFAULT NOW()
