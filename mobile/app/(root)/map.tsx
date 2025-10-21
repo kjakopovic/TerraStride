@@ -13,6 +13,7 @@ import {
   GridSquare,
   LatLng,
   createRegionFromPosition,
+  gridIndicesToSquare,
   gridSquareToPolygon,
   latLngToGridSquare,
 } from "@/utils/gridUtils";
@@ -34,8 +35,6 @@ import MapFabMenu from "@/components/map/FabMenu";
 import EventDetailsModal from "@/components/map/EventDetailsModal";
 import EventBuilderModal from "@/components/events/EventBuilderModal";
 
-const FAB_ACTIONS = [icons.layer, icons.trophy, icons.plus] as const;
-
 const Map = () => {
   const { colors } = useTheme();
   const directionsApiKey = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY ?? "";
@@ -44,7 +43,8 @@ const Map = () => {
 
   const [currentPosition, setCurrentPosition] = useState<LatLng | null>(null);
   const [region, setRegion] = useState<Region | null>(null);
-  const [claimedSquares, setClaimedSquares] = useState<GridSquare[]>([]);
+  const [currentSquare, setCurrentSquare] = useState<GridSquare | null>(null);
+  const [neighborSquares, setNeighborSquares] = useState<GridSquare[]>([]);
   const claimedIdsRef = useRef<Set<string>>(new Set());
 
   const { events, setEvents } = useStoredEvents();
@@ -68,9 +68,20 @@ const Map = () => {
     setRegion(createRegionFromPosition(position));
 
     const square = latLngToGridSquare(position.latitude, position.longitude);
-    if (!claimedIdsRef.current.has(square.id)) {
-      claimedIdsRef.current.add(square.id);
-      setClaimedSquares((prev) => [...prev, square]);
+    setCurrentSquare(square);
+
+    const [gridX, gridY] = square.id.split("_").map(Number);
+    if (Number.isFinite(gridX) && Number.isFinite(gridY)) {
+      const neighbors: GridSquare[] = [];
+      for (let dx = -1; dx <= 1; dx += 1) {
+        for (let dy = -1; dy <= 1; dy += 1) {
+          if (dx === 0 && dy === 0) continue;
+          neighbors.push(gridIndicesToSquare(gridX + dx, gridY + dy));
+        }
+      }
+      setNeighborSquares(neighbors);
+    } else {
+      setNeighborSquares([]);
     }
   });
 
@@ -211,16 +222,28 @@ const Map = () => {
         region={region!}
         showsUserLocation
       >
-        {currentView === "territory" &&
-          claimedSquares.map((square) => (
-            <Polygon
-              key={square.id}
-              coordinates={gridSquareToPolygon(square)}
-              fillColor="rgba(0, 150, 255, 0.3)"
-              strokeColor="rgba(0, 150, 255, 0.8)"
-              strokeWidth={2}
-            />
-          ))}
+        {currentView === "territory" && (
+          <>
+            {neighborSquares.map((square) => (
+              <Polygon
+                key={`neighbor-${square.id}`}
+                coordinates={gridSquareToPolygon(square)}
+                strokeColor="rgba(0, 150, 255, 0.6)"
+                strokeWidth={2}
+                fillColor="transparent"
+              />
+            ))}
+
+            {currentSquare && (
+              <Polygon
+                coordinates={gridSquareToPolygon(currentSquare)}
+                fillColor="rgba(0, 150, 255, 0.3)"
+                strokeColor="rgba(0, 150, 255, 0.9)"
+                strokeWidth={2}
+              />
+            )}
+          </>
+        )}
 
         {currentView === "events" &&
           events.map((event) => {

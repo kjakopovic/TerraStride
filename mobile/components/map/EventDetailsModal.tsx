@@ -10,6 +10,9 @@ import {
 import { useTheme } from "@/core/theme";
 import { RaceEvent } from "@/utils/eventsUtils";
 import * as icons from "@/core/constants/icons";
+import CustomButton from "../customButton";
+import Spacer from "../spacer";
+import { useSolanaPayments } from "@/hooks/useSolanaPayments";
 
 type Props = {
   event: RaceEvent | null;
@@ -19,6 +22,8 @@ type Props = {
 
 const EventDetailsModal: React.FC<Props> = ({ event, visible, onClose }) => {
   const { colors, borderRadius } = useTheme();
+
+  const { payAdmission } = useSolanaPayments();
 
   return (
     <Modal visible={visible && !!event} animationType="slide" transparent>
@@ -106,6 +111,11 @@ const EventDetailsModal: React.FC<Props> = ({ event, visible, onClose }) => {
                   </View>
                 ))}
               </View>
+              <Spacer size={8} />
+              <CustomButton
+                title="Buy admission ticket (2 USDC)"
+                onPress={payAdmission}
+              />
             </ScrollView>
           )}
         </View>

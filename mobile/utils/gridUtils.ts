@@ -1,5 +1,5 @@
 const EARTH_RADIUS = 6378137;
-const ORIGIN_SHIFT = (Math.PI * EARTH_RADIUS) / 180;
+const ORIGIN_SHIFT = Math.PI * EARTH_RADIUS;
 export const GRID_SIZE_METERS = 100;
 
 export type LatLng = { latitude: number; longitude: number };
@@ -10,12 +10,44 @@ export type GridSquare = {
   centroid: LatLng;
 };
 
-const lonToMeters = (lon: number) => lon * ORIGIN_SHIFT;
-const latToMeters = (lat: number) =>
-  Math.log(Math.tan(((90 + lat) * Math.PI) / 360)) * EARTH_RADIUS;
-const metersToLon = (x: number) => x / ORIGIN_SHIFT;
-const metersToLat = (y: number) =>
-  (Math.atan(Math.exp(y / EARTH_RADIUS)) * 360) / Math.PI - 90;
+const lonToMeters = (lon: number) => (lon * ORIGIN_SHIFT) / 180;
+
+const latToMeters = (lat: number) => {
+  const latRad = (lat * Math.PI) / 180;
+  return EARTH_RADIUS * Math.log(Math.tan(Math.PI / 4 + latRad / 2));
+};
+
+const metersToLon = (x: number) => (x / ORIGIN_SHIFT) * 180;
+
+const metersToLat = (y: number) => {
+  const latRad = Math.PI / 2 - 2 * Math.atan(Math.exp(-y / EARTH_RADIUS));
+  return (latRad * 180) / Math.PI;
+};
+
+const buildSquareFromIndices = (
+  gridX: number,
+  gridY: number,
+  gridSizeMeters: number
+): GridSquare => {
+  const minX = gridX * gridSizeMeters;
+  const maxX = (gridX + 1) * gridSizeMeters;
+  const minY = gridY * gridSizeMeters;
+  const maxY = (gridY + 1) * gridSizeMeters;
+
+  const corners: LatLng[] = [
+    { latitude: metersToLat(minY), longitude: metersToLon(minX) },
+    { latitude: metersToLat(minY), longitude: metersToLon(maxX) },
+    { latitude: metersToLat(maxY), longitude: metersToLon(maxX) },
+    { latitude: metersToLat(maxY), longitude: metersToLon(minX) },
+  ];
+
+  const centroid: LatLng = {
+    latitude: metersToLat((minY + maxY) / 2),
+    longitude: metersToLon((minX + maxX) / 2),
+  };
+
+  return { id: `${gridX}_${gridY}`, corners, centroid };
+};
 
 export const latLngToGridSquare = (
   latitude: number,
@@ -28,25 +60,14 @@ export const latLngToGridSquare = (
   const gridX = Math.floor(x / gridSizeMeters);
   const gridY = Math.floor(y / gridSizeMeters);
 
-  const minX = gridX * gridSizeMeters;
-  const maxX = (gridX + 1) * gridSizeMeters;
-  const minY = gridY * gridSizeMeters;
-  const maxY = (gridY + 1) * gridSizeMeters;
-
-  const corners: LatLng[] = [
-    { latitude: metersToLat(minY), longitude: metersToLon(minX) }, // SW
-    { latitude: metersToLat(minY), longitude: metersToLon(maxX) }, // SE
-    { latitude: metersToLat(maxY), longitude: metersToLon(maxX) }, // NE
-    { latitude: metersToLat(maxY), longitude: metersToLon(minX) }, // NW
-  ];
-
-  const centroid: LatLng = {
-    latitude: metersToLat((minY + maxY) / 2),
-    longitude: metersToLon((minX + maxX) / 2),
-  };
-
-  return { id: `${gridX}_${gridY}`, corners, centroid };
+  return buildSquareFromIndices(gridX, gridY, gridSizeMeters);
 };
+
+export const gridIndicesToSquare = (
+  gridX: number,
+  gridY: number,
+  gridSizeMeters: number = GRID_SIZE_METERS
+): GridSquare => buildSquareFromIndices(gridX, gridY, gridSizeMeters);
 
 export const gridSquareToPolygon = (square: GridSquare) => [
   ...square.corners,
