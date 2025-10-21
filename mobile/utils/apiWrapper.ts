@@ -1,6 +1,11 @@
-import { useAuth } from "../hooks/useAuth";
-
-type HttpMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
+export type HttpMethod =
+  | "GET"
+  | "POST"
+  | "PUT"
+  | "PATCH"
+  | "DELETE"
+  | "HEAD"
+  | "OPTIONS";
 
 export type ApiWrapperOptions = {
   baseUrl: string;
@@ -54,7 +59,7 @@ export const createApiClient = ({
     };
 
     if (token) {
-      resolvedHeaders.Authorization = `Bearer ${token}`;
+      resolvedHeaders.access_token = token;
     }
 
     console.log("[API ⇢]", method, url, {

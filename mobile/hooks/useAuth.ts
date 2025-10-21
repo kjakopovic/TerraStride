@@ -1,66 +1,81 @@
-import { createApiClient } from "@/utils/apiWrapper";
+import { useCallback, useMemo } from "react";
 import * as SecureStore from "expo-secure-store";
+import { createApiClient } from "@/utils/apiWrapper";
 
 const USERS_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL_USERS ?? "";
 
 export const useAuth = () => {
-  const getTokens = async () => null;
+  const getTokens = useCallback(async () => {
+    return SecureStore.getItemAsync("accessToken");
+  }, []);
 
-  const apiClient = createApiClient({
-    baseUrl: USERS_BASE_URL,
-    getToken: getTokens,
-  });
+  const apiClient = useMemo(
+    () =>
+      createApiClient({
+        baseUrl: USERS_BASE_URL,
+        getToken: getTokens,
+      }),
+    [getTokens]
+  );
 
-  const login = async ({ email, password }: LoginPayload) => {
-    const response = await apiClient.post<LoginResponse>("login", {
-      body: { email, password },
-    });
+  const login = useCallback(
+    async ({ email, password }: LoginPayload) => {
+      const response = await apiClient.post<LoginResponse>("login", {
+        body: { email, password },
+      });
 
-    const accessToken = response?.accessToken;
-    if (typeof accessToken === "string" && accessToken.length > 0) {
-      await SecureStore.setItemAsync("accessToken", accessToken);
-    }
+      const accessToken = response?.accessToken;
+      if (typeof accessToken === "string" && accessToken.length > 0) {
+        await SecureStore.setItemAsync("accessToken", accessToken);
+      }
 
-    return response;
-  };
+      return response;
+    },
+    [apiClient]
+  );
 
-  const register = async ({
-    username,
-    email,
-    password,
-    passcode,
-  }: {
-    email: string;
-    password: string;
-    username: string;
-    passcode: string;
-  }) =>
-    apiClient.post("/register", {
-      body: { username, email, password, passcode },
-    });
+  const register = useCallback(
+    async ({
+      username,
+      email,
+      password,
+      passphrase,
+      passcode,
+    }: {
+      email: string;
+      password: string;
+      username: string;
+      passphrase: string;
+      passcode: string;
+    }) =>
+      apiClient.post("register", {
+        body: { username, email, password, passphrase, passcode },
+      }),
+    [apiClient]
+  );
 
-  const emailConfirmation = async ({
-    email,
-    code,
-  }: {
-    email: string;
-    code: string;
-  }) =>
-    apiClient.post("/verification/send", {
-      body: { email, confirmation_code: code },
-    });
+  const emailConfirmation = useCallback(
+    async ({ email, code }: { email: string; code: string }) =>
+      apiClient.post("register/confirm", {
+        body: { email, code },
+      }),
+    [apiClient]
+  );
 
-  const logout = () => {
-    // Implement logout logic here
-  };
+  const logout = useCallback(async () => {
+    await SecureStore.deleteItemAsync("accessToken");
+  }, []);
 
-  return {
-    login,
-    register,
-    emailConfirmation,
-    logout,
-    getTokens,
-  };
+  return useMemo(
+    () => ({
+      login,
+      register,
+      emailConfirmation,
+      logout,
+      getTokens,
+    }),
+    [login, register, emailConfirmation, logout, getTokens]
+  );
 };
 
 type LoginPayload = {

@@ -1,5 +1,5 @@
 import * as icons from "@/core/constants/icons";
-import React, { useMemo } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { View, Text, ScrollView, Image } from "react-native";
 import { LineChart } from "react-native-chart-kit";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -14,16 +14,40 @@ import {
   createBalanceChartConfig,
 } from "@/utils/chartUtils";
 import { useRouter } from "expo-router";
+import { useAuth } from "@/hooks/useAuth";
+import { createUserService } from "@/hooks/useUser";
+import { UserProfile } from "@/core/types/user";
 
 const Home = () => {
   const { height } = useWindowDimensions();
   const { colors, borderRadius, spacing } = useTheme();
-  const user = STRINGS.HOME.HEADER.DEFAULT_USER_NAME;
   const router = useRouter();
+  const [user, setUser] = useState<UserProfile | null>(null);
+  const { getTokens } = useAuth();
 
-  const handleMapPress = () => {
-    router.push("/map");
-  };
+  const userService = useMemo(() => createUserService(getTokens), [getTokens]);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const fetchData = async () => {
+      try {
+        const userData = await userService.getUser();
+        if (isMounted) {
+          setUser(userData.user);
+          console.log("Fetched user data:", userData);
+        }
+      } catch (error) {
+        console.warn("Failed to fetch user data", error);
+      }
+    };
+
+    fetchData();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [userService]);
 
   const chartData = useMemo(
     () => createBalanceChartData(colors.primary),
@@ -34,6 +58,10 @@ const Home = () => {
     () => createBalanceChartConfig(colors.background, colors.primary),
     [colors.background, colors.primary]
   );
+
+  const handleMapPress = () => {
+    router.push("/map");
+  };
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
@@ -85,7 +113,7 @@ const Home = () => {
                   color: colors.text,
                 }}
               >
-                {(user || STRINGS.HOME.HEADER.GUEST) + "!"}
+                {(user?.name || STRINGS.HOME.HEADER.GUEST) + "!"}
               </Text>
             </View>
             <Image source={icons.cog} style={{ height: 24, width: 24 }} />
