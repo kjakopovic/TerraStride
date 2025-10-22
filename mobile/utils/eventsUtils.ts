@@ -10,11 +10,13 @@ export type RaceEvent = {
   id: string;
   name: string;
   checkpoints: RaceCheckpoint[];
-  isCircuit?: boolean;
-  startCheckpointId?: string;
-  endCheckpointId?: string;
+  isCircuit: boolean;
+  startCheckpointId: string;
+  endCheckpointId: string;
   raceDate?: string;
   raceTime?: string;
+  city?: string;
+  entryFee?: number;
   route?: EventRoute;
 };
 

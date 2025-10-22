@@ -21,11 +21,12 @@ import {
   RaceEvent,
   reorderCheckpointsForEvent,
 } from "@/utils/eventsUtils";
+import type { EventBuilderResult } from "@/core/types/event";
 
 type EventBuilderModalProps = {
   visible: boolean;
   onClose: () => void;
-  onConfirm: (event: RaceEvent) => void;
+  onConfirm: (event: EventBuilderResult) => void;
   initialRegion?: Region;
 };
 
@@ -67,6 +68,8 @@ const EventBuilderModal: React.FC<EventBuilderModalProps> = ({
   const [showTimePicker, setShowTimePicker] = useState(false);
   const [tempDate, setTempDate] = useState<Date>(new Date());
   const [tempTime, setTempTime] = useState<Date>(new Date());
+  const [city, setCity] = useState("");
+  const [entryFee, setEntryFee] = useState("");
 
   useEffect(() => {
     if (!visible) {
@@ -87,6 +90,8 @@ const EventBuilderModal: React.FC<EventBuilderModalProps> = ({
       setShowTimePicker(false);
       setTempDate(new Date());
       setTempTime(new Date());
+      setCity("");
+      setEntryFee("");
     }
   }, [visible, initialRegion]);
 
@@ -134,15 +139,22 @@ const EventBuilderModal: React.FC<EventBuilderModalProps> = ({
   };
 
   const canAddCheckpoint = label.trim().length > 0;
+  const entryFeeValue = Number.parseFloat(entryFee);
+  const isEntryFeeValid =
+    !Number.isNaN(entryFeeValue) &&
+    Number.isFinite(entryFeeValue) &&
+    entryFeeValue >= 0;
   const canSave =
     eventName.trim().length > 0 &&
+    city.trim().length > 0 &&
     checkpoints.length >= 2 &&
     startCheckpointId &&
     (isCircuit
       ? true
       : !!endCheckpointId && startCheckpointId !== endCheckpointId) &&
     !!eventDate &&
-    !!eventTime;
+    !!eventTime &&
+    isEntryFeeValid;
 
   const neutralStroke = "rgba(33, 33, 33, 0.12)";
   const neutralBg = "rgba(255, 255, 255, 0.9)";
@@ -213,6 +225,37 @@ const EventBuilderModal: React.FC<EventBuilderModalProps> = ({
                 value={eventName}
                 onChangeText={setEventName}
                 placeholder="Event name"
+                style={{
+                  borderWidth: 1,
+                  borderColor: neutralStroke,
+                  borderRadius: borderRadius.medium,
+                  paddingHorizontal: 14,
+                  paddingVertical: 12,
+                  color: colors.text,
+                  backgroundColor: neutralBg,
+                }}
+                placeholderTextColor={colors.text40}
+              />
+              <TextInput
+                value={city}
+                onChangeText={setCity}
+                placeholder="City"
+                style={{
+                  borderWidth: 1,
+                  borderColor: neutralStroke,
+                  borderRadius: borderRadius.medium,
+                  paddingHorizontal: 14,
+                  paddingVertical: 12,
+                  color: colors.text,
+                  backgroundColor: neutralBg,
+                }}
+                placeholderTextColor={colors.text40}
+              />
+              <TextInput
+                value={entryFee}
+                onChangeText={setEntryFee}
+                placeholder="Entry fee"
+                keyboardType="decimal-pad"
                 style={{
                   borderWidth: 1,
                   borderColor: neutralStroke,
@@ -495,6 +538,18 @@ const EventBuilderModal: React.FC<EventBuilderModalProps> = ({
                   {errorMessage}
                 </Text>
               )}
+              {!isEntryFeeValid && entryFee.trim().length > 0 && (
+                <Text
+                  style={{
+                    color: colors.error,
+                    fontSize: 13,
+                    paddingHorizontal: 20,
+                    marginTop: 4,
+                  }}
+                >
+                  Enter a valid entry fee.
+                </Text>
+              )}
             </View>
 
             <View
@@ -555,18 +610,22 @@ const EventBuilderModal: React.FC<EventBuilderModalProps> = ({
                   const dateString = formatDate(eventDate);
                   const timeString = formatTime(eventTime);
 
-                  onConfirm({
+                  const result: EventBuilderResult = {
                     id: `${Date.now()}-${Math.random()}`,
                     name: eventName.trim(),
-                    isCircuit,
-                    checkpoints: orderedCheckpoints,
-                    startCheckpointId: orderedCheckpoints[0]?.id,
-                    endCheckpointId: isCircuit
-                      ? orderedCheckpoints[0]?.id
-                      : orderedCheckpoints[orderedCheckpoints.length - 1]?.id,
+                    city: city.trim(),
+                    entryFee: entryFeeValue,
                     raceDate: dateString,
                     raceTime: timeString,
-                  });
+                    isCircuit,
+                    startCheckpointId: orderedCheckpoints[0]!.id,
+                    endCheckpointId: isCircuit
+                      ? orderedCheckpoints[0]!.id
+                      : orderedCheckpoints[orderedCheckpoints.length - 1]!.id,
+                    checkpoints: orderedCheckpoints,
+                  };
+
+                  onConfirm(result);
                 }}
               >
                 <Text

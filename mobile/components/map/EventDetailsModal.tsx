@@ -81,6 +81,14 @@ const EventDetailsModal: React.FC<Props> = ({ event, visible, onClose }) => {
               <Text style={{ color: colors.text40 }}>
                 {event.isCircuit ? "Circuit race" : "Point-to-point"}
               </Text>
+              {event.city && (
+                <Text style={{ color: colors.text }}>{event.city}</Text>
+              )}
+              {event.entryFee !== undefined && (
+                <Text style={{ color: colors.text, fontWeight: "500" }}>
+                  Entry fee: {event.entryFee}
+                </Text>
+              )}
               {event.raceDate && (
                 <Text style={{ color: colors.text, fontWeight: "500" }}>
                   {event.raceDate}
@@ -113,7 +121,7 @@ const EventDetailsModal: React.FC<Props> = ({ event, visible, onClose }) => {
               </View>
               <Spacer size={8} />
               <CustomButton
-                title="Buy admission ticket (2 USDC)"
+                title={`Buy admission ticket (${event.entryFee ?? 2} USDC)`}
                 onPress={payAdmission}
               />
             </ScrollView>
