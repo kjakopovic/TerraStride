@@ -24,7 +24,6 @@ import {
 } from "@/utils/eventsUtils";
 import { EventRoute, fetchEventRoute } from "@/utils/directionsUtils";
 import { appendStoredEvent } from "@/utils/eventsStorage";
-import * as icons from "@/core/constants/icons";
 import { useRouter } from "expo-router";
 import { useLocationTracking } from "@/hooks/useLocationTracking";
 import { useStoredEvents } from "@/hooks/useStoredEvents";
@@ -34,6 +33,22 @@ import MapRoutingWarning from "@/components/map/RoutingWarning";
 import MapFabMenu from "@/components/map/FabMenu";
 import EventDetailsModal from "@/components/map/EventDetailsModal";
 import EventBuilderModal from "@/components/events/EventBuilderModal";
+import { useTerritories } from "@/hooks/useTerritories";
+
+const hexToRgba = (hexColor: string, alpha = 0.3) => {
+  const normalized = hexColor.replace("#", "");
+  if (normalized.length !== 6) return hexColor;
+
+  const numeric = Number.parseInt(normalized, 16);
+  const r = (numeric >> 16) & 255;
+  const g = (numeric >> 8) & 255;
+  const b = numeric & 255;
+
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+};
+
+const withAlphaHex = (hexColor: string, alphaHex = "4D") =>
+  /^#([0-9a-f]{6})$/i.test(hexColor) ? `${hexColor}${alphaHex}` : hexColor;
 
 const Map = () => {
   const { colors } = useTheme();
@@ -45,7 +60,6 @@ const Map = () => {
   const [region, setRegion] = useState<Region | null>(null);
   const [currentSquare, setCurrentSquare] = useState<GridSquare | null>(null);
   const [neighborSquares, setNeighborSquares] = useState<GridSquare[]>([]);
-  const claimedIdsRef = useRef<Set<string>>(new Set());
 
   const { events, setEvents } = useStoredEvents();
   const [eventRoutes, setEventRoutes] = useState<Record<string, EventRoute>>(
@@ -53,6 +67,9 @@ const Map = () => {
   );
   const [eventModalVisible, setEventModalVisible] = useState(false);
   const [routingError, setRoutingError] = useState<string | null>(null);
+
+  const { territories, error: territoriesError } =
+    useTerritories(currentPosition);
 
   const [currentView, setCurrentView] = useState<"territory" | "events">(
     "territory"
@@ -224,6 +241,16 @@ const Map = () => {
       >
         {currentView === "territory" && (
           <>
+            {territories.map((territory) => (
+              <Polygon
+                key={`territory-${territory.id}`}
+                coordinates={territory.polygon}
+                strokeColor={territory.color}
+                strokeWidth={2}
+                fillColor={hexToRgba(territory.color, 0.25)}
+              />
+            ))}
+
             {neighborSquares.map((square) => (
               <Polygon
                 key={`neighbor-${square.id}`}
@@ -297,7 +324,7 @@ const Map = () => {
         onSelect={handleSearchSelect}
       />
 
-      <MapRoutingWarning message={routingError} />
+      <MapRoutingWarning message={routingError ?? territoriesError} />
 
       <MapFabMenu
         open={fabOpen}
