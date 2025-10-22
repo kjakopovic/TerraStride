@@ -12,11 +12,11 @@ schema = {
         "search": {
             "type": "string",
         },
+        "limit": {
+            "type": "string",
+            "pattern": r"^\d+$",
+        },
     },
-    "required": [
-        "lat",
-        "lng",
-        "search",
-    ],
-    "additionalProperties": False,
+    "required": [],
+    "additionalProperties": True,
 }

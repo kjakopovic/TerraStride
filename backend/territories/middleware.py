@@ -63,7 +63,7 @@ def middleware(handler, event, context):
             )
         elif error_code in ["NotAuthorizedException", "InvalidParameterException"]:
             return _response(
-                401, {"status": "error", "message": "Incorrect username or password"}
+                401, {"status": "error", "message": "Access token expired"}
             )
         elif error_code == "UserNotFoundException":
             return _response(404, {"status": "error", "message": "User does not exist"})

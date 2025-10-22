@@ -1,32 +1,29 @@
 import boto3
 import os
 import math
+from decimal import Decimal
 from aws_lambda_powertools import Logger
 from aws_lambda_powertools.utilities.validation import validate
-from middleware import (
-    middleware,
-    _response,
-    _cors_response,
-    connect_to_aurora_db,
-    get_user_id,
-)
+from boto3.dynamodb.conditions import Attr
+from middleware import middleware, _response, _cors_response, get_user_id
 from validation_schema import schema
 
 # Configure logging
 logger = Logger()
 
 # Environment Variables
-AWS_REGION = os.environ.get("AWS_REGION")
-DB_SECRET_ARN = os.environ.get("DB_SECRET_ARN")
+AWS_REGION = os.environ.get("AWS_REGION", "eu-central-1")
+EVENTS_TABLE = os.environ.get("EVENTS_TABLE")
 
-# Clients
-secrets_client = boto3.client("secretsmanager")
+# DynamoDB
+dynamodb = boto3.resource("dynamodb", region_name=AWS_REGION)
+events_table = dynamodb.Table(EVENTS_TABLE)
 
 
 @logger.inject_lambda_context(log_event=True)
 @middleware
 def lambda_handler(event, context):
-    """List events within 100 km radius, or search by name/city (paginated)."""
+    """List events by name/city or within 100 km radius."""
     request_id = context.aws_request_id
     logger.append_keys(request_id=request_id)
 
@@ -35,186 +32,154 @@ def lambda_handler(event, context):
     if cors_resp:
         return cors_resp
 
-    # Extract query params and headers
     query_params = event.get("queryStringParameters") or {}
     headers = event.get("headers") or {}
 
-    # Validate base schema
+    # Validate request
     validate(event=query_params, schema=schema)
 
     user_id = get_user_id(headers)
     if not user_id:
-        return _response(
-            401, {"status": "error", "message": "Unauthorized - missing access token"}
-        )
+        return _response(401, {"status": "error", "message": "Unauthorized"})
 
-    # Pagination setup
-    page = int(query_params.get("page", 1))
+    # Pagination
     limit = int(query_params.get("limit", 30))
-    offset = (page - 1) * limit
+    exclusive_start_key = query_params.get("next_token", None)
 
-    # Optional search filter
+    # Search/filter parameters
     search = query_params.get("search")
     lat = query_params.get("lat")
     lng = query_params.get("lng")
 
-    # Connect to Aurora
-    conn, cursor = connect_to_aurora_db(secrets_client, DB_SECRET_ARN)
+    events = []
+    next_token = None
 
     try:
-        if search:  # 🔍 Search mode
-            logger.info(f"Searching events for query: '{search}'")
-            events_data, total_count = search_events(cursor, search, limit, offset)
-        else:  # 📍 Location mode
-            try:
-                lat = float(lat)
-                lng = float(lng)
-            except (TypeError, ValueError):
-                return _response(
-                    400, {"status": "error", "message": "Invalid lat/lng values"}
-                )
+        if search:
+            logger.info(f"Searching events for query '{search}'")
+            events, next_token = search_events(search, limit, exclusive_start_key)
+            total_count = len(events)
 
-            # Define 100 km radius
-            radius_km = 100.0
-            lat_deg_delta = radius_km / 111.32
-            lng_deg_delta = radius_km / (111.32 * math.cos(math.radians(lat)))
+        elif lat and lng:
+            lat = float(lat)
+            lng = float(lng)
+            events = fetch_events_within_bounds(lat, lng, limit)
+            total_count = len(events)
 
-            min_lat = lat - lat_deg_delta
-            max_lat = lat + lat_deg_delta
-            min_lng = lng - lng_deg_delta
-            max_lng = lng + lng_deg_delta
+        else:
+            scan_kwargs = {
+                "FilterExpression": Attr("deleted_at").not_exists(),
+                "Limit": limit,
+            }
+            if exclusive_start_key:
+                scan_kwargs["ExclusiveStartKey"] = exclusive_start_key
 
-            events_data, total_count = fetch_events_within_bounds(
-                cursor, min_lat, max_lat, min_lng, max_lng, limit, offset
-            )
+            # Default: return latest events
+            response = events_table.scan(**scan_kwargs)
 
-        conn.commit()
+            events = response.get("Items", [])
+            next_token = response.get("LastEvaluatedKey")
+            total_count = len(events)
+
+        logger.info(f"Total events fetched: {total_count}")
+
+        return _response(
+            200,
+            {
+                "status": "success",
+                "message": "Events fetched successfully.",
+                "pagination": {
+                    "limit": limit,
+                    "total": total_count,
+                    "next_token": next_token if next_token else None,
+                },
+                "events": events,
+            },
+        )
 
     except Exception as e:
-        logger.error("Error listing events", extra={"error": str(e)})
-        try:
-            conn.rollback()
-        except Exception as rollback_err:
-            logger.warning(f"Rollback failed", extra={"error": str(rollback_err)})
-        return _response(500, {"status": "error", "message": "Failed to list events."})
-
-    finally:
-        try:
-            cursor.close()
-            conn.close()
-        except Exception as close_err:
-            logger.warning(f"Error closing DB resources: {close_err}")
-
-    return _response(
-        200,
-        {
-            "status": "success",
-            "message": "Events fetched successfully.",
-            "pagination": {
-                "page": page,
-                "limit": limit,
-                "total": total_count,
-                "pages": math.ceil(total_count / limit) if total_count else 0,
-            },
-            "events": events_data,
-        },
-    )
+        logger.exception("Error fetching events")
+        return _response(500, {"status": "error", "message": str(e)})
 
 
-def fetch_events_within_bounds(
-    cursor, min_lat, max_lat, min_lng, max_lng, limit, offset
-):
-    """Fetch events whose checkpoints fall within a bounding box."""
-    query = """
-        WITH nearby_events AS (
-            SELECT DISTINCT e.id
-            FROM events e
-            JOIN event_checkpoints c ON e.id = c.event_id
-            WHERE e.deleted_at IS NULL
-              AND c.deleted_at IS NULL
-              AND c.lat BETWEEN %(min_lat)s AND %(max_lat)s
-              AND c.lng BETWEEN %(min_lng)s AND %(max_lng)s
-        )
-        SELECT e.id, e.name, e.city, e.startdate, e.enddate, e.created_at
-        FROM events e
-        JOIN nearby_events n ON e.id = n.id
-        WHERE e.deleted_at IS NULL
-        ORDER BY e.startdate DESC
-        LIMIT %(limit)s OFFSET %(offset)s;
-    """
+# -----------------------------------------------
+# 🔍 Search by city or name (uses GSI or scan)
+# -----------------------------------------------
+def search_events(search, limit, exclusive_start_key):
+    """Search events by partial match on name or city."""
+    search_lower = search.lower()
 
-    count_query = """
-        SELECT COUNT(*) FROM (
-            SELECT DISTINCT e.id
-            FROM events e
-            JOIN event_checkpoints c ON e.id = c.event_id
-            WHERE e.deleted_at IS NULL
-              AND c.deleted_at IS NULL
-              AND c.lat BETWEEN %(min_lat)s AND %(max_lat)s
-              AND c.lng BETWEEN %(min_lng)s AND %(max_lng)s
-        ) sub;
-    """
-
-    params = {
-        "min_lat": min_lat,
-        "max_lat": max_lat,
-        "min_lng": min_lng,
-        "max_lng": max_lng,
-        "limit": limit,
-        "offset": offset,
+    # If user provides a city name, use GSI for efficiency
+    scan_kwargs = {
+        "FilterExpression": (
+            Attr("deleted_at").not_exists()
+            & (
+                Attr("city_lower").contains(search_lower)
+                | Attr("name_lower").contains(search_lower)
+            )
+        ),
+        "Limit": limit,
     }
 
-    cursor.execute(count_query, params)
-    total_count = cursor.fetchone()[0]
+    if exclusive_start_key:
+        scan_kwargs["ExclusiveStartKey"] = exclusive_start_key
 
-    cursor.execute(query, params)
-    results = cursor.fetchall()
+    response = events_table.scan(**scan_kwargs)
 
-    return _format_events(results), total_count
+    return response.get("Items", []), response.get("LastEvaluatedKey")
 
 
-def search_events(cursor, search, limit, offset):
-    """Search events by name or city (case-insensitive, partial match)."""
-    query = """
-        SELECT e.id, e.name, e.city, e.startdate, e.enddate, e.created_at
-        FROM events e
-        WHERE e.deleted_at IS NULL
-          AND (e.name ILIKE %(search)s OR e.city ILIKE %(search)s)
-        ORDER BY e.startdate DESC
-        LIMIT %(limit)s OFFSET %(offset)s;
+# TODO: for large scale this needs to be handled correctly
+# -----------------------------------------------
+# 📍 Geo-based filtering (100 km radius)
+# -----------------------------------------------
+def fetch_events_within_bounds(lat, lng, limit):
+    """
+    Scan DynamoDB for events whose checkpoints fall within a 100 km bounding box.
+    Uses a manual bounding-box check in Python since DynamoDB can't filter nested arrays.
     """
 
-    count_query = """
-        SELECT COUNT(*) FROM events e
-        WHERE e.deleted_at IS NULL
-          AND (e.name ILIKE %(search)s OR e.city ILIKE %(search)s);
-    """
+    radius_km = 100.0
+    lat_deg_delta = radius_km / 111.32
+    lng_deg_delta = radius_km / (111.32 * math.cos(math.radians(lat)))
 
-    params = {
-        "search": f"%{search}%",
-        "limit": limit,
-        "offset": offset,
+    min_lat = lat - lat_deg_delta
+    max_lat = lat + lat_deg_delta
+    min_lng = lng - lng_deg_delta
+    max_lng = lng + lng_deg_delta
+
+    logger.info(f"Bounding box: lat[{min_lat}, {max_lat}], lng[{min_lng}, {max_lng}]")
+
+    # Convert to Decimal for comparison with DynamoDB data
+    min_lat = Decimal(str(min_lat))
+    max_lat = Decimal(str(max_lat))
+    min_lng = Decimal(str(min_lng))
+    max_lng = Decimal(str(max_lng))
+
+    # Scan only for non-deleted events
+    scan_kwargs = {
+        "FilterExpression": Attr("deleted_at").not_exists(),
     }
 
-    cursor.execute(count_query, params)
-    total_count = cursor.fetchone()[0]
+    response = events_table.scan(**scan_kwargs)
+    items = response.get("Items", [])
+    results = []
 
-    cursor.execute(query, params)
-    results = cursor.fetchall()
+    for event in items:
+        checkpoints = event.get("checkpoints", [])
+        for cp in checkpoints:
+            try:
+                lat_cp = Decimal(str(cp.get("lat", 0)))
+                lng_cp = Decimal(str(cp.get("lng", 0)))
+            except Exception:
+                continue
 
-    return _format_events(results), total_count
+            if min_lat <= lat_cp <= max_lat and min_lng <= lng_cp <= max_lng:
+                results.append(event)
+                break  # Found one checkpoint in range → keep the event
 
+        if len(results) >= limit:
+            break
 
-def _format_events(results):
-    """Convert raw DB tuples to event dictionaries."""
-    return [
-        {
-            "id": str(row[0]),
-            "name": row[1],
-            "city": row[2],
-            "startdate": row[3].isoformat() if row[3] else None,
-            "enddate": row[4].isoformat() if row[4] else None,
-            "created_at": row[5].isoformat() if row[5] else None,
-        }
-        for row in results
-    ]
+    logger.info(f"Found {len(results)} events within bounds.")
+    return results[:limit]

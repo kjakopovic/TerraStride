@@ -2,9 +2,18 @@
 
 ## TODO:
 
-- we need to add mining logic and squares calculations
+### LOGIC
+
+- we need to add mining logic
 - we need to add ticket consumptions (when user buys a ticket, they can consume it, once they consume it they run starts)
 - we need to add strava runs fetching for territory collection
+
+### ENDPOINTS
+
+create endpoint to receive all users active event tickets that they can consume
+endpoint to consume a ticket to start running
+endpoint to save their run
+mining endpoint, similiar to hearts logic that was in gestura
 
 ## Architecture
 

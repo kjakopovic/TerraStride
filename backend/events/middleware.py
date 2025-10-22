@@ -1,11 +1,10 @@
 from aws_lambda_powertools.middleware_factory import lambda_handler_decorator
 from aws_lambda_powertools.utilities.validation import SchemaValidationError
 from aws_lambda_powertools import Logger
-from psycopg2.extras import RealDictCursor
+from botocore.exceptions import ClientError
 import os
 import json
 import boto3
-import psycopg2
 
 # Configure logging
 logger = Logger()
@@ -38,6 +37,43 @@ def middleware(handler, event, context):
     try:
         return handler(event, context)
 
+    except ClientError as e:
+        error_code = e.response.get("Error", {}).get("Code", "UnknownError")
+        error_message = e.response.get("Error", {}).get("Message", str(e))
+
+        logger.error(
+            "Client error occurred",
+            extra={"error_code": error_code, "error_message": error_message},
+        )
+
+        if (
+            error_code == "InvalidParameterException"
+            and "ResendEmailVerificationCode" in context.function_name
+        ):
+            return _response(
+                400, {"status": "error", "message": "User is already confirmed"}
+            )
+        elif error_code == "CodeMismatchException":
+            return _response(
+                400, {"status": "error", "message": "Invalid verification code"}
+            )
+        elif error_code == "ExpiredCodeException":
+            return _response(
+                400, {"status": "error", "message": "Verification code has expired"}
+            )
+        elif error_code in ["NotAuthorizedException", "InvalidParameterException"]:
+            return _response(
+                401, {"status": "error", "message": "Access token expired"}
+            )
+        elif error_code == "UserNotFoundException":
+            return _response(404, {"status": "error", "message": "User does not exist"})
+        elif error_code == "UsernameExistsException":
+            return _response(409, {"status": "error", "message": "User already exists"})
+        else:
+            return _response(
+                500, {"status": "error", "message": f"Error found: {error_message}"}
+            )
+
     except SchemaValidationError as e:
         logger.warning(
             "schema validation failed",
@@ -58,7 +94,7 @@ def _response(status, body, extra_headers=None, multi_value_headers=None):
     resp = {
         "statusCode": status,
         "headers": headers,
-        "body": json.dumps(body),
+        "body": json.dumps(body, default=str),
     }
 
     if multi_value_headers:
@@ -112,29 +148,3 @@ def get_user_id(headers):
     user_id = user_attributes.get("sub")
 
     return user_id
-
-
-def connect_to_aurora_db(secrets_client, db_secret_arn):
-    # Retrieve secret
-    secret_resp = secrets_client.get_secret_value(SecretId=db_secret_arn)
-    secret = json.loads(secret_resp["SecretString"])
-
-    host = secret.get("host", "localhost")
-    port = secret.get("port", 5432)
-    username = secret.get("username", "postgres")
-    password = secret.get("password", "superSecretPass123")
-    dbname = secret.get("dbname", "postgres")
-
-    # Connect to Aurora Postgres
-    conn = psycopg2.connect(
-        host=host,
-        port=port,
-        user=username,
-        password=password,
-        dbname=dbname,
-        connect_timeout=5,
-    )
-
-    cursor = conn.cursor(cursor_factory=RealDictCursor)
-
-    return conn, cursor

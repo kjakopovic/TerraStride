@@ -75,6 +75,10 @@ def lambda_handler(event, context):
         # Count user territories (active)
         territory_count = get_user_territory_count(user_id)
 
+        logger.info(
+            f"User {user_id} has {territory_count} active territories after upsert."
+        )
+
         # Update Cognito
         update_cognito_territory_count(user_id, territory_count)
 
@@ -102,6 +106,7 @@ def upsert_territory_dynamodb(t: Territory):
         "average_pace": (
             Decimal(str(t.average_pace)) if t.average_pace is not None else Decimal("0")
         ),
+        "user_id": t.user_id,
         "color": t.color,
         "left_top_corner_lat": (
             Decimal(str(t.left_top_corner_lat))

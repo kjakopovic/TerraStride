@@ -4,28 +4,28 @@ import json
 import uuid
 from decimal import Decimal
 from datetime import datetime
+from datetime import timezone
 from aws_lambda_powertools import Logger
 from aws_lambda_powertools.utilities.validation import validate
-from middleware import (
-    middleware,
-    _response,
-    _cors_response,
-    connect_to_aurora_db,
-    get_user_id,
-)
+from middleware import middleware, _response, _cors_response, get_user_id
 from validation_schema import schema
 
-# Configure logging
+# Logging
 logger = Logger()
 
 # Environment Variables
 AWS_REGION = os.environ.get("AWS_REGION")
-DB_SECRET_ARN = os.environ.get("DB_SECRET_ARN")
+EVENTS_TABLE = os.environ.get("EVENTS_TABLE")
+EVENT_TICKETS_TABLE = os.environ.get("EVENT_TICKETS_TABLE")
 USER_POOL_ID = os.environ.get("USER_POOL_ID")
 
-# AWS Clients
-secrets_client = boto3.client("secretsmanager")
-cognito_client = boto3.client("cognito-idp")
+# DynamoDB clients
+dynamodb = boto3.resource("dynamodb", region_name=AWS_REGION)
+events_table = dynamodb.Table(EVENTS_TABLE)
+tickets_table = dynamodb.Table(EVENT_TICKETS_TABLE)
+
+# Cognito client
+cognito_client = boto3.client("cognito-idp", region_name=AWS_REGION)
 
 
 @logger.inject_lambda_context(log_event=True)
@@ -35,15 +35,15 @@ def lambda_handler(event, context):
     request_id = context.aws_request_id
     logger.append_keys(request_id=request_id)
 
-    # Handle CORS preflight
+    # CORS preflight
     cors_resp = _cors_response(event.get("httpMethod"))
     if cors_resp:
         return cors_resp
 
     headers = event.get("headers") or {}
-    body = json.loads(event.get("body")) if event.get("body") else {}
+    body = json.loads(event.get("body") or "{}")
 
-    # Validate input
+    # Validate request
     try:
         validate(event=body, schema=schema)
     except Exception as e:
@@ -59,53 +59,50 @@ def lambda_handler(event, context):
 
     event_id = body["event_id"]
 
-    # Connect to Aurora
-    conn, cursor = connect_to_aurora_db(secrets_client, DB_SECRET_ARN)
-
     try:
-        # Get event details (ensure it's active)
-        cursor.execute(
-            """
-            SELECT id, entry_fee, startdate, enddate
-            FROM events
-            WHERE id = %s
-              AND deleted_at IS NULL
-              AND NOW() BETWEEN startdate AND enddate;
-            """,
-            (event_id,),
-        )
-        event_row = cursor.fetchone()
-
-        if not event_row:
+        # Get event details (active)
+        event_item = events_table.get_item(Key={"id": event_id}).get("Item")
+        if not event_item:
             return _response(
-                400,
-                {
-                    "status": "error",
-                    "message": "Event is not active or does not exist.",
-                },
+                400, {"status": "error", "message": "Event does not exist"}
             )
 
-        event_id, entry_fee, startdate, enddate = event_row
-        entry_fee = Decimal(entry_fee or 0)
+        # Parse event datetimes as aware UTC
+        startdate = datetime.fromisoformat(event_item["startdate"])
+        enddate = datetime.fromisoformat(event_item["enddate"])
+
+        # Ensure they are aware in UTC
+        if startdate.tzinfo is None:
+            startdate = startdate.replace(tzinfo=timezone.utc)
+        else:
+            startdate = startdate.astimezone(timezone.utc)
+
+        if enddate.tzinfo is None:
+            enddate = enddate.replace(tzinfo=timezone.utc)
+        else:
+            enddate = enddate.astimezone(timezone.utc)
+
+        # Current UTC time
+        now = datetime.now(timezone.utc)
+
+        if not (startdate <= now <= enddate):
+            return _response(400, {"status": "error", "message": "Event is not active"})
+
+        entry_fee = Decimal(str(event_item.get("entry_fee", 0)))
 
         # Check if user already has a ticket
-        cursor.execute(
-            """
-            SELECT 1 FROM event_tickets
-            WHERE event_id = %s AND user_id = %s AND deleted_at IS NULL;
-            """,
-            (event_id, user_id),
-        )
-        if cursor.fetchone():
+        existing_tickets = tickets_table.query(
+            IndexName="user_id-index",
+            KeyConditionExpression=boto3.dynamodb.conditions.Key("user_id").eq(user_id),
+        )["Items"]
+
+        if any(t["event_id"] == event_id for t in existing_tickets):
             return _response(
                 400,
-                {
-                    "status": "error",
-                    "message": "You have already attended this event.",
-                },
+                {"status": "error", "message": "You have already attended this event"},
             )
 
-        # Get user attributes from Cognito
+        # Get user balance from Cognito
         user_attrs = get_cognito_user_attributes(user_id)
         if not user_attrs:
             return _response(
@@ -113,46 +110,36 @@ def lambda_handler(event, context):
             )
 
         current_balance = Decimal(user_attrs.get("custom:coin_balance", "0"))
-
-        logger.info(f"User balance: {current_balance}, Entry fee: {entry_fee}")
-
         if current_balance < entry_fee:
             return _response(
                 400,
                 {
                     "status": "error",
-                    "message": "Insufficient balance to attend this event.",
+                    "message": "Insufficient balance to attend this event",
                 },
             )
 
-        # Deduct entry fee and update Cognito balance
+        # Deduct balance
         new_balance = current_balance - entry_fee
         update_cognito_balance(user_id, new_balance)
 
-        # Create event ticket record
+        # Create ticket
         ticket_id = str(uuid.uuid4())
-        insert_event_ticket(cursor, ticket_id, entry_fee, user_id, event_id)
-
-        conn.commit()
-
-        logger.info(
-            f"User {user_id} attended event {event_id} with ticket {ticket_id}, new balance: {new_balance}"
+        tickets_table.put_item(
+            Item={
+                "event_id": event_id,
+                "id": ticket_id,
+                "user_id": user_id,
+                "price": str(entry_fee),
+                "created_at": datetime.utcnow().isoformat(),
+            }
         )
 
-    except Exception as e:
-        logger.error("Error attending event", extra={"error": str(e)})
-        try:
-            conn.rollback()
-        except Exception as rollback_err:
-            logger.warning("Rollback failed", extra={"error": str(rollback_err)})
-        return _response(500, {"status": "error", "message": "Failed to attend event."})
+        logger.info(f"User {user_id} attended event {event_id} with ticket {ticket_id}")
 
-    finally:
-        try:
-            cursor.close()
-            conn.close()
-        except Exception as close_err:
-            logger.warning(f"Error closing DB resources: {close_err}")
+    except Exception as e:
+        logger.exception("Error attending event")
+        return _response(500, {"status": "error", "message": "Failed to attend event."})
 
     return _response(
         200,
@@ -169,18 +156,14 @@ def get_cognito_user_attributes(user_id):
     """Fetch user attributes from Cognito."""
     try:
         response = cognito_client.admin_get_user(
-            UserPoolId=USER_POOL_ID,
-            Username=user_id,
+            UserPoolId=USER_POOL_ID, Username=user_id
         )
-        attributes = {
-            attr["Name"]: attr["Value"] for attr in response["UserAttributes"]
-        }
-        return attributes
+        return {attr["Name"]: attr["Value"] for attr in response["UserAttributes"]}
     except cognito_client.exceptions.UserNotFoundException:
         logger.warning(f"User {user_id} not found in Cognito.")
         return None
     except Exception as e:
-        logger.error("Error fetching user attributes", extra={"error": str(e)})
+        logger.exception("Failed to fetch Cognito attributes")
         raise
 
 
@@ -190,20 +173,9 @@ def update_cognito_balance(user_id, new_balance):
         cognito_client.admin_update_user_attributes(
             UserPoolId=USER_POOL_ID,
             Username=user_id,
-            UserAttributes=[
-                {"Name": "custom:coin_balance", "Value": str(new_balance)},
-            ],
+            UserAttributes=[{"Name": "custom:coin_balance", "Value": str(new_balance)}],
         )
         logger.info(f"Updated user {user_id} balance to {new_balance}")
     except Exception as e:
-        logger.error("Failed to update Cognito balance", extra={"error": str(e)})
+        logger.exception("Failed to update Cognito balance")
         raise
-
-
-def insert_event_ticket(cursor, ticket_id, price, user_id, event_id):
-    """Insert a new event ticket record."""
-    query = """
-        INSERT INTO event_tickets (id, price, user_id, event_id)
-        VALUES (%s, %s, %s, %s);
-    """
-    cursor.execute(query, (ticket_id, price, user_id, event_id))

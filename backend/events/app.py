@@ -8,6 +8,7 @@ from aws_cdk import (
     aws_apigateway as apigw,
     aws_dynamodb as dynamodb,
     RemovalPolicy,
+    aws_iam as iam,
 )
 from constructs import Construct
 
@@ -17,8 +18,10 @@ class TerrastrideEventsStack(Stack):
         super().__init__(scope, construct_id, **kwargs)
 
         user_pool_id = self.node.try_get_context("userPoolId")
+        user_pool_arn = (
+            f"arn:aws:cognito-idp:{self.region}:{self.account}:userpool/{user_pool_id}"
+        )
 
-        # TODO: make checkpoints and traces part of event, no additional table for that is needed
         # Events:
         # PK: id
         # GSI: city-index -> partition city, sort startdate (ISO string) for searching events by city
@@ -43,37 +46,6 @@ class TerrastrideEventsStack(Stack):
             projection_type=dynamodb.ProjectionType.ALL,
         )
 
-        # Event Checkpoints:
-        # Model as a table keyed by event_id (PK) and sequence_number (SK) so checkpoints are ordered and easy to query
-        event_checkpoints_table = dynamodb.Table(
-            self,
-            "EventCheckpointsTable",
-            partition_key=dynamodb.Attribute(
-                name="event_id", type=dynamodb.AttributeType.STRING
-            ),
-            sort_key=dynamodb.Attribute(
-                name="sequence_number", type=dynamodb.AttributeType.NUMBER
-            ),
-            billing_mode=dynamodb.BillingMode.PAY_PER_REQUEST,
-            removal_policy=RemovalPolicy.DESTROY,
-        )
-
-        # Event trace:
-        # PK: event_id (so traces are grouped by event)
-        # SK: created_at or id for ordering; we'll use created_at (ISO string) to allow time-sorting
-        event_trace_table = dynamodb.Table(
-            self,
-            "EventTraceTable",
-            partition_key=dynamodb.Attribute(
-                name="event_id", type=dynamodb.AttributeType.STRING
-            ),
-            sort_key=dynamodb.Attribute(
-                name="created_at", type=dynamodb.AttributeType.STRING
-            ),
-            billing_mode=dynamodb.BillingMode.PAY_PER_REQUEST,
-            removal_policy=RemovalPolicy.DESTROY,
-        )
-
         # Event tickets:
         # PK: event_id, SK: ticket_id (UUID)
         # GSI: user_id-index -> partition user_id to list tickets by user
@@ -94,6 +66,20 @@ class TerrastrideEventsStack(Stack):
                 name="user_id", type=dynamodb.AttributeType.STRING
             ),
             projection_type=dynamodb.ProjectionType.ALL,
+        )
+
+        # IAM Policy for Lambda functions to access Cognito
+        cognito_policy = iam.PolicyStatement(
+            effect=iam.Effect.ALLOW,
+            actions=[
+                "cognito-idp:SignUp",
+                "cognito-idp:AdminConfirmSignUp",
+                "cognito-idp:InitiateAuth",
+                "cognito-idp:GetUser",
+                "cognito-idp:AdminGetUser",
+                "cognito-idp:AdminUpdateUserAttributes",
+            ],
+            resources=[user_pool_arn],
         )
 
         # Healthcheck Lambda Function
@@ -140,8 +126,6 @@ class TerrastrideEventsStack(Stack):
                 "POWERTOOLS_SERVICE_NAME": "events",
                 "USER_POOL_ID": user_pool_id,
                 "EVENTS_TABLE": events_table.table_name,
-                "EVENT_TRACE_TABLE": event_trace_table.table_name,
-                "EVENT_CHECKPOINTS_TABLE": event_checkpoints_table.table_name,
                 "EVENT_TICKETS_TABLE": event_tickets_table.table_name,
             },
             timeout=Duration.seconds(30),
@@ -167,8 +151,6 @@ class TerrastrideEventsStack(Stack):
                 "POWERTOOLS_SERVICE_NAME": "events",
                 "USER_POOL_ID": user_pool_id,
                 "EVENTS_TABLE": events_table.table_name,
-                "EVENT_TRACE_TABLE": event_trace_table.table_name,
-                "EVENT_CHECKPOINTS_TABLE": event_checkpoints_table.table_name,
                 "EVENT_TICKETS_TABLE": event_tickets_table.table_name,
             },
             timeout=Duration.seconds(30),
@@ -194,8 +176,6 @@ class TerrastrideEventsStack(Stack):
                 "POWERTOOLS_SERVICE_NAME": "events",
                 "USER_POOL_ID": user_pool_id,
                 "EVENTS_TABLE": events_table.table_name,
-                "EVENT_TRACE_TABLE": event_trace_table.table_name,
-                "EVENT_CHECKPOINTS_TABLE": event_checkpoints_table.table_name,
                 "EVENT_TICKETS_TABLE": event_tickets_table.table_name,
             },
             timeout=Duration.seconds(30),
@@ -221,8 +201,6 @@ class TerrastrideEventsStack(Stack):
                 "POWERTOOLS_SERVICE_NAME": "events",
                 "USER_POOL_ID": user_pool_id,
                 "EVENTS_TABLE": events_table.table_name,
-                "EVENT_TRACE_TABLE": event_trace_table.table_name,
-                "EVENT_CHECKPOINTS_TABLE": event_checkpoints_table.table_name,
                 "EVENT_TICKETS_TABLE": event_tickets_table.table_name,
             },
             timeout=Duration.seconds(30),
@@ -248,8 +226,6 @@ class TerrastrideEventsStack(Stack):
                 "POWERTOOLS_SERVICE_NAME": "events",
                 "USER_POOL_ID": user_pool_id,
                 "EVENTS_TABLE": events_table.table_name,
-                "EVENT_TRACE_TABLE": event_trace_table.table_name,
-                "EVENT_CHECKPOINTS_TABLE": event_checkpoints_table.table_name,
                 "EVENT_TICKETS_TABLE": event_tickets_table.table_name,
             },
             timeout=Duration.seconds(30),
@@ -261,21 +237,12 @@ class TerrastrideEventsStack(Stack):
         events_table.grant_read_write_data(delete_event_lambda)
         events_table.grant_read_write_data(edit_event_lambda)
         events_table.grant_read_write_data(list_events_lambda)
-        event_trace_table.grant_read_write_data(attend_event_lambda)
-        event_trace_table.grant_read_write_data(create_event_lambda)
-        event_trace_table.grant_read_write_data(delete_event_lambda)
-        event_trace_table.grant_read_write_data(edit_event_lambda)
-        event_trace_table.grant_read_write_data(list_events_lambda)
-        event_checkpoints_table.grant_read_write_data(attend_event_lambda)
-        event_checkpoints_table.grant_read_write_data(create_event_lambda)
-        event_checkpoints_table.grant_read_write_data(delete_event_lambda)
-        event_checkpoints_table.grant_read_write_data(edit_event_lambda)
-        event_checkpoints_table.grant_read_write_data(list_events_lambda)
         event_tickets_table.grant_read_write_data(attend_event_lambda)
         event_tickets_table.grant_read_write_data(create_event_lambda)
         event_tickets_table.grant_read_write_data(delete_event_lambda)
         event_tickets_table.grant_read_write_data(edit_event_lambda)
         event_tickets_table.grant_read_write_data(list_events_lambda)
+        attend_event_lambda.add_to_role_policy(cognito_policy)
 
         # API Gateway
         api = apigw.RestApi(
