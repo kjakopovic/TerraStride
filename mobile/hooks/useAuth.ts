@@ -4,16 +4,25 @@ import { createApiClient } from "@/utils/apiWrapper";
 
 const USERS_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL_USERS ?? "";
 
+type StoredTokens = {
+  access_token: string | null;
+  idToken: string | null;
+};
+
 export const useAuth = () => {
-  const getTokens = useCallback(async () => {
-    return SecureStore.getItemAsync("accessToken");
+  const getTokens = useCallback(async (): Promise<StoredTokens> => {
+    const [accessToken, idToken] = await Promise.all([
+      SecureStore.getItemAsync("accessToken"),
+      SecureStore.getItemAsync("idToken"),
+    ]);
+    return { access_token: accessToken, idToken };
   }, []);
 
   const apiClient = useMemo(
     () =>
       createApiClient({
         baseUrl: USERS_BASE_URL,
-        getToken: getTokens,
+        getTokens,
       }),
     [getTokens]
   );
@@ -24,9 +33,11 @@ export const useAuth = () => {
         body: { email, password },
       });
 
-      const accessToken = response?.accessToken;
-      if (typeof accessToken === "string" && accessToken.length > 0) {
-        await SecureStore.setItemAsync("accessToken", accessToken);
+      if (typeof response?.accessToken === "string") {
+        await SecureStore.setItemAsync("accessToken", response.accessToken);
+      }
+      if (typeof response?.idToken === "string") {
+        await SecureStore.setItemAsync("idToken", response.idToken);
       }
 
       return response;
@@ -67,13 +78,7 @@ export const useAuth = () => {
   }, []);
 
   return useMemo(
-    () => ({
-      login,
-      register,
-      emailConfirmation,
-      logout,
-      getTokens,
-    }),
+    () => ({ login, register, emailConfirmation, logout, getTokens }),
     [login, register, emailConfirmation, logout, getTokens]
   );
 };

@@ -9,7 +9,9 @@ export type HttpMethod =
 
 export type ApiWrapperOptions = {
   baseUrl: string;
-  getToken?: () => Promise<string | null> | string | null;
+  getTokens?: () =>
+    | Promise<{ access_token: string | null; idToken: string | null }>
+    | { access_token: string | null; idToken: string | null };
   defaultHeaders?: Record<string, string>;
 };
 
@@ -43,14 +45,14 @@ const buildUrl = (
 
 export const createApiClient = ({
   baseUrl,
-  getToken,
+  getTokens,
   defaultHeaders,
 }: ApiWrapperOptions) => {
   const request = async <T>(path: string, config: RequestConfig = {}) => {
     const { method = "GET", headers, query, body } = config;
 
     const url = buildUrl(baseUrl, path, query);
-    const token = getToken ? await getToken() : null;
+    const token = getTokens ? await getTokens() : null;
 
     const resolvedHeaders: Record<string, string> = {
       "Content-Type": "application/json",
@@ -58,8 +60,11 @@ export const createApiClient = ({
       ...headers,
     };
 
-    if (token) {
-      resolvedHeaders.access_token = token;
+    if (token?.access_token) {
+      resolvedHeaders.access_token = token.access_token;
+    }
+    if (token?.idToken) {
+      resolvedHeaders.Authorization = `Bearer ${token.idToken}`;
     }
 
     console.log("[API ⇢]", method, url, {
