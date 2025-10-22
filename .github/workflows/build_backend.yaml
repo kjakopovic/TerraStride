@@ -10,9 +10,6 @@ on:
 
 env:
   BACKEND_PATH: backend
-  vpcId: ${{ secrets.AURORA_VPC_ID }}
-  auroraSgId: ${{ secrets.AURORA_SG_ID }}
-  dbSecretName: ${{ secrets.AURORA_DB_SECRET_NAME }}
   awsRegion: "eu-central-1"
   userPoolId: ${{ secrets.USER_POOL_ID }}
 
@@ -22,7 +19,6 @@ jobs:
     outputs:
       users: ${{ steps.filter.outputs.users }}
       territories: ${{ steps.filter.outputs.territories }}
-      aurora: ${{ steps.filter.outputs.aurora }}
       events: ${{ steps.filter.outputs.events }}
     steps:
       - uses: actions/checkout@v3
@@ -37,54 +33,8 @@ jobs:
               - 'backend/users/**'
             territories:
               - 'backend/territories/**'
-            aurora:
-              - 'backend/aurora/**'
             events:
               - 'backend/events/**'
-
-  test_aurora:
-    runs-on: ubuntu-latest
-    needs: filter
-    if: ${{ needs.filter.outputs.aurora == 'true' }}
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
-
-      - name: Set up Python
-        uses: actions/setup-python@v3
-        with:
-          python-version: "3.12"
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v3
-        with:
-          node-version: "24"
-
-      - name: Install Python packages
-        run: pip install boto3 aws-cdk-lib constructs dotenv
-        shell: bash
-
-      - name: Install AWS CDK CLI
-        run: npm install -g aws-cdk
-
-      - name: Set up AWS CLI
-        uses: ./.github/composite/aws_setup
-        with:
-          aws_access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws_region: ${{ env.awsRegion }}
-
-      - name: Setup cdk json file
-        working-directory: ${{ env.BACKEND_PATH }}
-        run: make generate-aurora-cdk
-
-      - name: Build Aurora Service
-        working-directory: ${{ env.BACKEND_PATH }}
-        run: make build-aurora
-
-      # - name: Run Tests
-      #   working-directory: ${{ env.BACKEND_PATH }}
-      #   run: python -m unittest discover -s tests -p "test*.py" -v
 
   test_users:
     runs-on: ubuntu-latest

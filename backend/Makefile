@@ -18,7 +18,7 @@ help:
 	@echo "  make destroy SERVICE=<service>      - Run 'cdk destroy' in backend/<service>"
 	@echo ""
 	@echo "Example:"
-	@echo "  make deploy SERVICE=aurora"
+	@echo "  make deploy SERVICE=users"
 
 # --- Build (cdk synth)
 build:
@@ -37,7 +37,7 @@ destroy:
 
 generate-cdk:
 	@if [ -z "$(SERVICE)" ]; then echo "❌ Please provide SERVICE=<name>"; exit 1; fi
-	cd ./scripts && python3 generate_cdk_json.py -e ../.env -o ../$(SERVICE)/cdk.json -k vpcId auroraSgId dbSecretName awsRegion userPoolId
+	cd ./scripts && python3 generate_cdk_json.py -e ../.env -o ../$(SERVICE)/cdk.json -k awsRegion userPoolId
 
 # ---------------------------
 # 💡 Shortcuts
@@ -48,12 +48,6 @@ build-users:      build
 
 deploy-users:     SERVICE=users
 deploy-users:     deploy
-
-build-aurora:     SERVICE=aurora
-build-aurora:     build
-
-deploy-aurora:    SERVICE=aurora
-deploy-aurora:    deploy
 
 build-territories:SERVICE=territories
 build-territories:build
@@ -76,9 +70,6 @@ generate-territories-cdk: generate-cdk
 
 generate-users-cdk: SERVICE=users
 generate-users-cdk: generate-cdk
-
-generate-aurora-cdk: SERVICE=aurora
-generate-aurora-cdk: generate-cdk
 
 generate-events-cdk: SERVICE=events
 generate-events-cdk: generate-cdk
