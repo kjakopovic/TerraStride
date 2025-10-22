@@ -6,8 +6,8 @@ from aws_cdk import (
     Duration,
     aws_lambda as _lambda,
     aws_apigateway as apigw,
-    aws_secretsmanager as sm,
-    aws_ec2 as ec2,
+    aws_dynamodb as dynamodb,
+    RemovalPolicy,
 )
 from constructs import Construct
 
@@ -16,23 +16,84 @@ class TerrastrideEventsStack(Stack):
     def __init__(self, scope: Construct, construct_id: str, **kwargs):
         super().__init__(scope, construct_id, **kwargs)
 
-        vpc_id = self.node.try_get_context("vpcId")
-        sg_id = self.node.try_get_context("auroraSgId")
-        db_secret_name = self.node.try_get_context("dbSecretName")
         user_pool_id = self.node.try_get_context("userPoolId")
 
-        # Reference the Secret dynamically
-        db_secret = sm.Secret.from_secret_name_v2(self, "DBSecret", db_secret_name)
-
-        vpc = ec2.Vpc.from_lookup(self, "ImportedVPC", vpc_id=vpc_id)
-        aurora_sg = ec2.SecurityGroup.from_security_group_id(
-            self, "ImportedAuroraSG", sg_id
+        # TODO: make checkpoints and traces part of event, no additional table for that is needed
+        # Events:
+        # PK: id
+        # GSI: city-index -> partition city, sort startdate (ISO string) for searching events by city
+        events_table = dynamodb.Table(
+            self,
+            "EventsTable",
+            partition_key=dynamodb.Attribute(
+                name="id", type=dynamodb.AttributeType.STRING
+            ),
+            billing_mode=dynamodb.BillingMode.PAY_PER_REQUEST,
+            removal_policy=RemovalPolicy.DESTROY,
         )
 
-        # Lambda security group for communication with Aurora
-        lambda_sg = ec2.SecurityGroup(self, "LambdaSG", vpc=vpc)
-        aurora_sg.add_ingress_rule(
-            lambda_sg, ec2.Port.tcp(5432), "Allow Lambda to access Aurora"
+        events_table.add_global_secondary_index(
+            index_name="city-index",
+            partition_key=dynamodb.Attribute(
+                name="city", type=dynamodb.AttributeType.STRING
+            ),
+            sort_key=dynamodb.Attribute(
+                name="startdate", type=dynamodb.AttributeType.STRING
+            ),
+            projection_type=dynamodb.ProjectionType.ALL,
+        )
+
+        # Event Checkpoints:
+        # Model as a table keyed by event_id (PK) and sequence_number (SK) so checkpoints are ordered and easy to query
+        event_checkpoints_table = dynamodb.Table(
+            self,
+            "EventCheckpointsTable",
+            partition_key=dynamodb.Attribute(
+                name="event_id", type=dynamodb.AttributeType.STRING
+            ),
+            sort_key=dynamodb.Attribute(
+                name="sequence_number", type=dynamodb.AttributeType.NUMBER
+            ),
+            billing_mode=dynamodb.BillingMode.PAY_PER_REQUEST,
+            removal_policy=RemovalPolicy.DESTROY,
+        )
+
+        # Event trace:
+        # PK: event_id (so traces are grouped by event)
+        # SK: created_at or id for ordering; we'll use created_at (ISO string) to allow time-sorting
+        event_trace_table = dynamodb.Table(
+            self,
+            "EventTraceTable",
+            partition_key=dynamodb.Attribute(
+                name="event_id", type=dynamodb.AttributeType.STRING
+            ),
+            sort_key=dynamodb.Attribute(
+                name="created_at", type=dynamodb.AttributeType.STRING
+            ),
+            billing_mode=dynamodb.BillingMode.PAY_PER_REQUEST,
+            removal_policy=RemovalPolicy.DESTROY,
+        )
+
+        # Event tickets:
+        # PK: event_id, SK: ticket_id (UUID)
+        # GSI: user_id-index -> partition user_id to list tickets by user
+        event_tickets_table = dynamodb.Table(
+            self,
+            "EventTicketsTable",
+            partition_key=dynamodb.Attribute(
+                name="event_id", type=dynamodb.AttributeType.STRING
+            ),
+            sort_key=dynamodb.Attribute(name="id", type=dynamodb.AttributeType.STRING),
+            billing_mode=dynamodb.BillingMode.PAY_PER_REQUEST,
+            removal_policy=RemovalPolicy.DESTROY,
+        )
+
+        event_tickets_table.add_global_secondary_index(
+            index_name="user_id-index",
+            partition_key=dynamodb.Attribute(
+                name="user_id", type=dynamodb.AttributeType.STRING
+            ),
+            projection_type=dynamodb.ProjectionType.ALL,
         )
 
         # Healthcheck Lambda Function
@@ -48,15 +109,12 @@ class TerrastrideEventsStack(Stack):
                     "command": [
                         "bash",
                         "-c",
-                        "cd healthcheck && pip install aws-lambda-powertools fastjsonschema psycopg2-binary -t /asset-output && cp -r . /asset-output && cp ../middleware.py /asset-output",
+                        "cd healthcheck && pip install aws-lambda-powertools fastjsonschema -t /asset-output && cp -r . /asset-output && cp ../middleware.py /asset-output",
                     ],
                 },
             ),
-            vpc=vpc,
-            security_groups=[lambda_sg],
             environment={
                 "POWERTOOLS_SERVICE_NAME": "events",
-                "DB_SECRET_ARN": db_secret.secret_name,
             },
             timeout=Duration.seconds(30),
         )
@@ -74,16 +132,17 @@ class TerrastrideEventsStack(Stack):
                     "command": [
                         "bash",
                         "-c",
-                        "cd attendevent && pip install aws-lambda-powertools fastjsonschema psycopg2-binary -t /asset-output && cp -r . /asset-output && cp ../middleware.py /asset-output",
+                        "cd attendevent && pip install aws-lambda-powertools fastjsonschema -t /asset-output && cp -r . /asset-output && cp ../middleware.py /asset-output",
                     ],
                 },
             ),
-            vpc=vpc,
-            security_groups=[lambda_sg],
             environment={
                 "POWERTOOLS_SERVICE_NAME": "events",
-                "DB_SECRET_ARN": db_secret.secret_name,
                 "USER_POOL_ID": user_pool_id,
+                "EVENTS_TABLE": events_table.table_name,
+                "EVENT_TRACE_TABLE": event_trace_table.table_name,
+                "EVENT_CHECKPOINTS_TABLE": event_checkpoints_table.table_name,
+                "EVENT_TICKETS_TABLE": event_tickets_table.table_name,
             },
             timeout=Duration.seconds(30),
         )
@@ -100,16 +159,17 @@ class TerrastrideEventsStack(Stack):
                     "command": [
                         "bash",
                         "-c",
-                        "cd createevent && pip install aws-lambda-powertools fastjsonschema psycopg2-binary -t /asset-output && cp -r . /asset-output && cp ../middleware.py /asset-output",
+                        "cd createevent && pip install aws-lambda-powertools fastjsonschema -t /asset-output && cp -r . /asset-output && cp ../middleware.py /asset-output",
                     ],
                 },
             ),
-            vpc=vpc,
-            security_groups=[lambda_sg],
             environment={
                 "POWERTOOLS_SERVICE_NAME": "events",
-                "DB_SECRET_ARN": db_secret.secret_name,
                 "USER_POOL_ID": user_pool_id,
+                "EVENTS_TABLE": events_table.table_name,
+                "EVENT_TRACE_TABLE": event_trace_table.table_name,
+                "EVENT_CHECKPOINTS_TABLE": event_checkpoints_table.table_name,
+                "EVENT_TICKETS_TABLE": event_tickets_table.table_name,
             },
             timeout=Duration.seconds(30),
         )
@@ -126,16 +186,17 @@ class TerrastrideEventsStack(Stack):
                     "command": [
                         "bash",
                         "-c",
-                        "cd deleteevent && pip install aws-lambda-powertools fastjsonschema psycopg2-binary -t /asset-output && cp -r . /asset-output && cp ../middleware.py /asset-output",
+                        "cd deleteevent && pip install aws-lambda-powertools fastjsonschema -t /asset-output && cp -r . /asset-output && cp ../middleware.py /asset-output",
                     ],
                 },
             ),
-            vpc=vpc,
-            security_groups=[lambda_sg],
             environment={
                 "POWERTOOLS_SERVICE_NAME": "events",
-                "DB_SECRET_ARN": db_secret.secret_name,
                 "USER_POOL_ID": user_pool_id,
+                "EVENTS_TABLE": events_table.table_name,
+                "EVENT_TRACE_TABLE": event_trace_table.table_name,
+                "EVENT_CHECKPOINTS_TABLE": event_checkpoints_table.table_name,
+                "EVENT_TICKETS_TABLE": event_tickets_table.table_name,
             },
             timeout=Duration.seconds(30),
         )
@@ -152,16 +213,17 @@ class TerrastrideEventsStack(Stack):
                     "command": [
                         "bash",
                         "-c",
-                        "cd editevent && pip install aws-lambda-powertools fastjsonschema psycopg2-binary -t /asset-output && cp -r . /asset-output && cp ../middleware.py /asset-output",
+                        "cd editevent && pip install aws-lambda-powertools fastjsonschema -t /asset-output && cp -r . /asset-output && cp ../middleware.py /asset-output",
                     ],
                 },
             ),
-            vpc=vpc,
-            security_groups=[lambda_sg],
             environment={
                 "POWERTOOLS_SERVICE_NAME": "events",
-                "DB_SECRET_ARN": db_secret.secret_name,
                 "USER_POOL_ID": user_pool_id,
+                "EVENTS_TABLE": events_table.table_name,
+                "EVENT_TRACE_TABLE": event_trace_table.table_name,
+                "EVENT_CHECKPOINTS_TABLE": event_checkpoints_table.table_name,
+                "EVENT_TICKETS_TABLE": event_tickets_table.table_name,
             },
             timeout=Duration.seconds(30),
         )
@@ -182,23 +244,38 @@ class TerrastrideEventsStack(Stack):
                     ],
                 },
             ),
-            vpc=vpc,
-            security_groups=[lambda_sg],
             environment={
                 "POWERTOOLS_SERVICE_NAME": "events",
-                "DB_SECRET_ARN": db_secret.secret_name,
                 "USER_POOL_ID": user_pool_id,
+                "EVENTS_TABLE": events_table.table_name,
+                "EVENT_TRACE_TABLE": event_trace_table.table_name,
+                "EVENT_CHECKPOINTS_TABLE": event_checkpoints_table.table_name,
+                "EVENT_TICKETS_TABLE": event_tickets_table.table_name,
             },
             timeout=Duration.seconds(30),
         )
 
         # Grant Lambda read access to the DB secret
-        db_secret.grant_read(healthcheck_lambda)
-        db_secret.grant_read(attend_event_lambda)
-        db_secret.grant_read(create_event_lambda)
-        db_secret.grant_read(delete_event_lambda)
-        db_secret.grant_read(edit_event_lambda)
-        db_secret.grant_read(list_events_lambda)
+        events_table.grant_read_write_data(attend_event_lambda)
+        events_table.grant_read_write_data(create_event_lambda)
+        events_table.grant_read_write_data(delete_event_lambda)
+        events_table.grant_read_write_data(edit_event_lambda)
+        events_table.grant_read_write_data(list_events_lambda)
+        event_trace_table.grant_read_write_data(attend_event_lambda)
+        event_trace_table.grant_read_write_data(create_event_lambda)
+        event_trace_table.grant_read_write_data(delete_event_lambda)
+        event_trace_table.grant_read_write_data(edit_event_lambda)
+        event_trace_table.grant_read_write_data(list_events_lambda)
+        event_checkpoints_table.grant_read_write_data(attend_event_lambda)
+        event_checkpoints_table.grant_read_write_data(create_event_lambda)
+        event_checkpoints_table.grant_read_write_data(delete_event_lambda)
+        event_checkpoints_table.grant_read_write_data(edit_event_lambda)
+        event_checkpoints_table.grant_read_write_data(list_events_lambda)
+        event_tickets_table.grant_read_write_data(attend_event_lambda)
+        event_tickets_table.grant_read_write_data(create_event_lambda)
+        event_tickets_table.grant_read_write_data(delete_event_lambda)
+        event_tickets_table.grant_read_write_data(edit_event_lambda)
+        event_tickets_table.grant_read_write_data(list_events_lambda)
 
         # API Gateway
         api = apigw.RestApi(

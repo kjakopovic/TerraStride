@@ -23,7 +23,7 @@ class TerrastrideAuroraStack(Stack):
             self,
             "AuroraServerlessCluster",
             engine=rds.DatabaseClusterEngine.aurora_postgres(
-                version=rds.AuroraPostgresEngineVersion.VER_15_4
+                version=rds.AuroraPostgresEngineVersion.VER_15_10
             ),
             credentials=rds.Credentials.from_username("terrastride_admin"),
             default_database_name="TerrastrideDB",

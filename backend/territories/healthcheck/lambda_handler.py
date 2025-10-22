@@ -1,15 +1,13 @@
 import boto3
 import os
-import json
 from aws_lambda_powertools import Logger
-from middleware import middleware, _response, _cors_response, connect_to_aurora_db
+from middleware import middleware, _response, _cors_response
 
 # Configure logging
 logger = Logger()
 
 # Environment Variables
 AWS_REGION = os.environ.get("AWS_REGION")
-DB_SECRET_ARN = os.environ.get("DB_SECRET_ARN")
 
 # Clients
 secrets_client = boto3.client("secretsmanager")
@@ -27,18 +25,9 @@ def lambda_handler(event, context):
     if cors_resp:
         return cors_resp
 
-    # Connect to Aurora DB
-    conn, cursor = connect_to_aurora_db(secrets_client, DB_SECRET_ARN)
-    cursor.execute("SELECT 1 AS alive;")
-    result = cursor.fetchone()
-
-    cursor.close()
-    conn.close()
-
     return _response(
         200,
         {
             "status": "success",
-            "db_alive": result["alive"],
         },
     )

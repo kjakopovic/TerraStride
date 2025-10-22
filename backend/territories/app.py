@@ -6,8 +6,9 @@ from aws_cdk import (
     Duration,
     aws_lambda as _lambda,
     aws_apigateway as apigw,
-    aws_secretsmanager as sm,
-    aws_ec2 as ec2,
+    aws_dynamodb as dynamodb,
+    aws_iam as iam,
+    RemovalPolicy,
 )
 from constructs import Construct
 
@@ -16,23 +17,48 @@ class TerrastrideTerritoriesStack(Stack):
     def __init__(self, scope: Construct, construct_id: str, **kwargs):
         super().__init__(scope, construct_id, **kwargs)
 
-        vpc_id = self.node.try_get_context("vpcId")
-        sg_id = self.node.try_get_context("auroraSgId")
-        db_secret_name = self.node.try_get_context("dbSecretName")
         user_pool_id = self.node.try_get_context("userPoolId")
-
-        # Reference the Secret dynamically
-        db_secret = sm.Secret.from_secret_name_v2(self, "DBSecret", db_secret_name)
-
-        vpc = ec2.Vpc.from_lookup(self, "ImportedVPC", vpc_id=vpc_id)
-        aurora_sg = ec2.SecurityGroup.from_security_group_id(
-            self, "ImportedAuroraSG", sg_id
+        user_pool_arn = (
+            f"arn:aws:cognito-idp:{self.region}:{self.account}:userpool/{user_pool_id}"
         )
 
-        # Lambda security group for communication with Aurora
-        lambda_sg = ec2.SecurityGroup(self, "LambdaSG", vpc=vpc)
-        aurora_sg.add_ingress_rule(
-            lambda_sg, ec2.Port.tcp(5432), "Allow Lambda to access Aurora"
+        # Territories:
+        # PK: id (UUID as string)
+        # GSI: user_id-index -> partition user_id, sort created_at (to list a user's territories)
+        territories_table = dynamodb.Table(
+            self,
+            "TerritoriesTable",
+            partition_key=dynamodb.Attribute(
+                name="square_key", type=dynamodb.AttributeType.STRING
+            ),
+            sort_key=None,
+            billing_mode=dynamodb.BillingMode.PAY_PER_REQUEST,
+            removal_policy=RemovalPolicy.DESTROY,
+        )
+
+        territories_table.add_global_secondary_index(
+            index_name="user_id-index",
+            partition_key=dynamodb.Attribute(
+                name="user_id", type=dynamodb.AttributeType.STRING
+            ),
+            sort_key=dynamodb.Attribute(
+                name="created_at", type=dynamodb.AttributeType.STRING
+            ),
+            projection_type=dynamodb.ProjectionType.ALL,
+        )
+
+        # IAM Policy for Lambda functions to access Cognito
+        cognito_policy = iam.PolicyStatement(
+            effect=iam.Effect.ALLOW,
+            actions=[
+                "cognito-idp:SignUp",
+                "cognito-idp:AdminConfirmSignUp",
+                "cognito-idp:InitiateAuth",
+                "cognito-idp:GetUser",
+                "cognito-idp:AdminGetUser",
+                "cognito-idp:AdminUpdateUserAttributes",
+            ],
+            resources=[user_pool_arn],
         )
 
         # Healthcheck Lambda Function
@@ -48,15 +74,12 @@ class TerrastrideTerritoriesStack(Stack):
                     "command": [
                         "bash",
                         "-c",
-                        "cd healthcheck && pip install aws-lambda-powertools fastjsonschema psycopg2-binary -t /asset-output && cp -r . /asset-output && cp ../middleware.py /asset-output",
+                        "cd healthcheck && pip install aws-lambda-powertools fastjsonschema -t /asset-output && cp -r . /asset-output && cp ../middleware.py /asset-output",
                     ],
                 },
             ),
-            vpc=vpc,
-            security_groups=[lambda_sg],
             environment={
                 "POWERTOOLS_SERVICE_NAME": "territories",
-                "DB_SECRET_ARN": db_secret.secret_name,
             },
             timeout=Duration.seconds(30),
         )
@@ -74,15 +97,13 @@ class TerrastrideTerritoriesStack(Stack):
                     "command": [
                         "bash",
                         "-c",
-                        "cd listterritories && pip install aws-lambda-powertools fastjsonschema psycopg2-binary -t /asset-output && cp -r . /asset-output && cp ../middleware.py /asset-output",
+                        "cd listterritories && pip install aws-lambda-powertools fastjsonschema -t /asset-output && cp -r . /asset-output && cp ../middleware.py /asset-output",
                     ],
                 },
             ),
-            vpc=vpc,
-            security_groups=[lambda_sg],
             environment={
                 "POWERTOOLS_SERVICE_NAME": "territories",
-                "DB_SECRET_ARN": db_secret.secret_name,
+                "TERRITORIES_TABLE": territories_table.table_name,
             },
             timeout=Duration.seconds(30),
         )
@@ -99,24 +120,23 @@ class TerrastrideTerritoriesStack(Stack):
                     "command": [
                         "bash",
                         "-c",
-                        "cd assignterritoriestouser && pip install aws-lambda-powertools fastjsonschema psycopg2-binary -t /asset-output && cp -r . /asset-output && cp ../middleware.py /asset-output",
+                        "cd assignterritoriestouser && pip install aws-lambda-powertools fastjsonschema -t /asset-output && cp -r . /asset-output && cp ../middleware.py /asset-output",
                     ],
                 },
             ),
-            vpc=vpc,
-            security_groups=[lambda_sg],
             environment={
                 "POWERTOOLS_SERVICE_NAME": "territories",
-                "DB_SECRET_ARN": db_secret.secret_name,
+                "TERRITORIES_TABLE": territories_table.table_name,
                 "USER_POOL_ID": user_pool_id,
             },
             timeout=Duration.seconds(30),
         )
 
         # Grant Lambda read access to the DB secret
-        db_secret.grant_read(healthcheck_lambda)
-        db_secret.grant_read(list_territories_lambda)
-        db_secret.grant_read(assign_territories_lambda)
+        territories_table.grant_read_write_data(list_territories_lambda)
+        territories_table.grant_read_write_data(assign_territories_lambda)
+        list_territories_lambda.add_to_role_policy(cognito_policy)
+        assign_territories_lambda.add_to_role_policy(cognito_policy)
 
         # API Gateway
         api = apigw.RestApi(

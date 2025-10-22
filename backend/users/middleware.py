@@ -94,7 +94,7 @@ def _response(status, body, extra_headers=None, multi_value_headers=None):
     resp = {
         "statusCode": status,
         "headers": headers,
-        "body": json.dumps(body),
+        "body": json.dumps(body, default=str),
     }
 
     if multi_value_headers:
