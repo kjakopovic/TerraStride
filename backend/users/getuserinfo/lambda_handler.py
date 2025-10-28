@@ -1,7 +1,13 @@
-import boto3
+"""
+Lambda function to get user information from AWS Cognito.
+"""
+
 import os
+import boto3
 from aws_lambda_powertools import Logger
-from middleware import middleware, _response, _cors_response
+
+# pylint: disable=import-error
+from middleware import middleware, http_response, cors_response
 
 # Configure logging
 logger = Logger()
@@ -16,12 +22,14 @@ cognito_client = boto3.client("cognito-idp")
 @logger.inject_lambda_context(log_event=True)
 @middleware
 def lambda_handler(event, context):
+    """Fetches user information from Cognito using the provided access token."""
+
     # Extract request information for logging
     request_id = context.aws_request_id
     logger.append_keys(request_id=request_id)
 
     # Handle preflight OPTIONS request
-    cors_resp = _cors_response(event.get("httpMethod"))
+    cors_resp = cors_response(event.get("httpMethod"))
     if cors_resp:
         return cors_resp
 
@@ -30,13 +38,13 @@ def lambda_handler(event, context):
 
     user_attributes = get_user_attributes(headers)
     if not user_attributes:
-        return _response(
+        return http_response(
             401, {"status": "error", "message": "Unauthorized - missing access token"}
         )
 
     logger.info("Successfully fetched user info")
 
-    return _response(
+    return http_response(
         200,
         {
             "status": "success",
@@ -46,6 +54,8 @@ def lambda_handler(event, context):
 
 
 def get_user_attributes(headers):
+    """Fetch user attributes from Cognito using the access token in headers."""
+
     auth_header = headers.get("access_token")
     capitalized_auth_header = headers.get("Access_token")
 

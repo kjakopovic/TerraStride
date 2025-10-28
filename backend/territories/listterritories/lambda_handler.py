@@ -1,11 +1,17 @@
+"""
+Lambda function to list territories within a lat/lng bounding box.
+"""
+
 from decimal import Decimal
-import boto3
 import os
 import math
+import boto3
 from aws_lambda_powertools import Logger
 from aws_lambda_powertools.utilities.validation import validate
 from boto3.dynamodb.conditions import Attr
-from middleware import middleware, _response, _cors_response, get_user_id
+
+# pylint: disable=import-error
+from middleware import middleware, http_response, cors_response, get_user_id
 from validation_schema import schema
 
 logger = Logger()
@@ -23,11 +29,12 @@ territories_table = dynamodb.Table(TERRITORIES_TABLE)
 @middleware
 def lambda_handler(event, context):
     """List territories whose corners fall within a given lat/lng bounding box."""
+
     request_id = context.aws_request_id
     logger.append_keys(request_id=request_id)
 
     # Handle CORS
-    cors_resp = _cors_response(event.get("httpMethod"))
+    cors_resp = cors_response(event.get("httpMethod"))
     if cors_resp:
         return cors_resp
 
@@ -41,14 +48,16 @@ def lambda_handler(event, context):
 
     user_id = get_user_id(headers)
     if not user_id:
-        return _response(401, {"status": "error", "message": "Unauthorized"})
+        return http_response(401, {"status": "error", "message": "Unauthorized"})
 
     # Parse lat/lng
     try:
         lat = float(query_params.get("lat"))
         lng = float(query_params.get("lng"))
     except (TypeError, ValueError):
-        return _response(400, {"status": "error", "message": "Invalid lat/lng values"})
+        return http_response(
+            400, {"status": "error", "message": "Invalid lat/lng values"}
+        )
 
     # Bounding box: ±5 km (~10 km total radius)
     radius_km = 5.0
@@ -64,15 +73,11 @@ def lambda_handler(event, context):
         f"Searching territories in bounding box lat[{min_lat}, {max_lat}] lng[{min_lng}, {max_lng}]"
     )
 
-    try:
-        territories_data = fetch_territories_within_bounds(
-            min_lat, max_lat, min_lng, max_lng
-        )
-    except Exception as e:
-        logger.exception("Error listing territories")
-        return _response(500, {"status": "error", "message": str(e)})
+    territories_data = fetch_territories_within_bounds(
+        min_lat, max_lat, min_lng, max_lng
+    )
 
-    return _response(
+    return http_response(
         200,
         {
             "status": "success",
@@ -123,7 +128,9 @@ def fetch_territories_within_bounds(min_lat, max_lat, min_lng, max_lng):
         response = territories_table.scan(
             ExclusiveStartKey=response["LastEvaluatedKey"], **scan_kwargs
         )
+
         results.extend(response.get("Items", []))
 
     logger.info(f"Found {len(results)} matching territories")
+
     return results

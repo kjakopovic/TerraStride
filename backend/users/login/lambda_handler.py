@@ -1,9 +1,15 @@
+"""
+Lambda function to handle user login using AWS Cognito.
+"""
+
 import json
 import os
 import boto3
 from aws_lambda_powertools import Logger
 from aws_lambda_powertools.utilities.validation import validate
-from middleware import middleware, _response, _cors_response
+
+# pylint: disable=import-error
+from middleware import middleware, http_response, cors_response
 from validation_schema import schema
 
 # Configure logging
@@ -20,12 +26,14 @@ cognito_client = boto3.client("cognito-idp")
 @logger.inject_lambda_context(log_event=True)
 @middleware
 def lambda_handler(event, context):
+    """Handles user login and returns authentication tokens."""
+
     # Extract request information for logging
     request_id = context.aws_request_id
     logger.append_keys(request_id=request_id)
 
     # Handle preflight OPTIONS request
-    cors_resp = _cors_response(event.get("httpMethod"))
+    cors_resp = cors_response(event.get("httpMethod"))
     if cors_resp:
         return cors_resp
 
@@ -44,6 +52,8 @@ def lambda_handler(event, context):
 
 
 def log_in_user(email, password):
+    """Authenticate user with Cognito and return tokens in cookies."""
+
     # Authenticate user using Cognito
     response = cognito_client.initiate_auth(
         ClientId=USER_POOL_CLIENT_ID,
@@ -79,7 +89,7 @@ def log_in_user(email, password):
         extra={"email": email, "token_expires_in": expires_in},
     )
 
-    return _response(
+    return http_response(
         200,
         {
             "status": "success",

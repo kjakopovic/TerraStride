@@ -1,14 +1,19 @@
-import boto3
+"""
+Lambda function to create a new running event in DynamoDB.
+"""
+
 import os
 import json
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from decimal import Decimal
+import boto3
 from aws_lambda_powertools import Logger
 from aws_lambda_powertools.utilities.validation import validate
-from middleware import middleware, _response, _cors_response, get_user_id
+
+# pylint: disable=import-error
+from middleware import middleware, http_response, cors_response, get_user_id
 from validation_schema import schema
-from datetime import timedelta
 
 logger = Logger()
 
@@ -25,17 +30,17 @@ events_table = dynamodb.Table(EVENTS_TABLE)
 @middleware
 def lambda_handler(event, context):
     """Create a new event and store it in DynamoDB."""
+
     request_id = context.aws_request_id
     logger.append_keys(request_id=request_id)
 
     # Handle preflight OPTIONS
-    cors_resp = _cors_response(event.get("httpMethod"))
+    cors_resp = cors_response(event.get("httpMethod"))
     if cors_resp:
         return cors_resp
 
     # Parse body
     event_body = json.loads(event.get("body") or "{}")
-
     headers = event.get("headers") or {}
 
     # Validate schema
@@ -44,7 +49,7 @@ def lambda_handler(event, context):
 
     user_id = get_user_id(headers)
     if not user_id:
-        return _response(
+        return http_response(
             401, {"status": "error", "message": "Unauthorized - missing access token"}
         )
 
@@ -84,17 +89,10 @@ def lambda_handler(event, context):
     }
 
     # Save to DynamoDB
-    try:
-        events_table.put_item(Item=item)
-        logger.info(f"Event {event_id} created successfully in DynamoDB")
-    except Exception as e:
-        logger.exception("Error saving event to DynamoDB")
-        return _response(
-            500,
-            {"status": "error", "message": f"Failed to create event: {str(e)}"},
-        )
+    events_table.put_item(Item=item)
+    logger.info(f"Event {event_id} created successfully in DynamoDB")
 
-    return _response(
+    return http_response(
         201,
         {
             "status": "success",
@@ -104,8 +102,9 @@ def lambda_handler(event, context):
     )
 
 
-# Normalize numeric fields (DynamoDB requires Decimal)
 def normalize_list(data_list):
+    """Convert float values in a list of dicts to Decimal."""
+
     normalized = []
     for item in data_list:
         normalized_item = {}

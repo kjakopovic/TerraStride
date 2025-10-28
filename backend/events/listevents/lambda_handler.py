@@ -1,11 +1,18 @@
-import boto3
+"""
+Lambda function to list running events from DynamoDB.
+Supports searching by name/city or filtering by geographic location.
+"""
+
 import os
 import math
 from decimal import Decimal
+import boto3
 from aws_lambda_powertools import Logger
 from aws_lambda_powertools.utilities.validation import validate
 from boto3.dynamodb.conditions import Attr
-from middleware import middleware, _response, _cors_response, get_user_id
+
+# pylint: disable=import-error
+from middleware import middleware, http_response, cors_response, get_user_id
 from validation_schema import schema
 
 # Configure logging
@@ -24,11 +31,12 @@ events_table = dynamodb.Table(EVENTS_TABLE)
 @middleware
 def lambda_handler(event, context):
     """List events by name/city or within 100 km radius."""
+
     request_id = context.aws_request_id
     logger.append_keys(request_id=request_id)
 
     # Handle preflight OPTIONS
-    cors_resp = _cors_response(event.get("httpMethod"))
+    cors_resp = cors_response(event.get("httpMethod"))
     if cors_resp:
         return cors_resp
 
@@ -40,7 +48,7 @@ def lambda_handler(event, context):
 
     user_id = get_user_id(headers)
     if not user_id:
-        return _response(401, {"status": "error", "message": "Unauthorized"})
+        return http_response(401, {"status": "error", "message": "Unauthorized"})
 
     # Pagination
     limit = int(query_params.get("limit", 30))
@@ -54,52 +62,47 @@ def lambda_handler(event, context):
     events = []
     next_token = None
 
-    try:
-        if search:
-            logger.info(f"Searching events for query '{search}'")
-            events, next_token = search_events(search, limit, exclusive_start_key)
-            total_count = len(events)
+    if search:
+        logger.info(f"Searching events for query '{search}'")
+        events, next_token = search_events(search, limit, exclusive_start_key)
+        total_count = len(events)
 
-        elif lat and lng:
-            lat = float(lat)
-            lng = float(lng)
-            events = fetch_events_within_bounds(lat, lng, limit)
-            total_count = len(events)
+    elif lat and lng:
+        lat = float(lat)
+        lng = float(lng)
+        events = fetch_events_within_bounds(lat, lng, limit)
+        total_count = len(events)
 
-        else:
-            scan_kwargs = {
-                "FilterExpression": Attr("deleted_at").not_exists(),
-                "Limit": limit,
-            }
-            if exclusive_start_key:
-                scan_kwargs["ExclusiveStartKey"] = exclusive_start_key
+    else:
+        scan_kwargs = {
+            "FilterExpression": Attr("deleted_at").not_exists(),
+            "Limit": limit,
+        }
+        if exclusive_start_key:
+            scan_kwargs["ExclusiveStartKey"] = exclusive_start_key
 
-            # Default: return latest events
-            response = events_table.scan(**scan_kwargs)
+        # Default: return latest events
+        response = events_table.scan(**scan_kwargs)
 
-            events = response.get("Items", [])
-            next_token = response.get("LastEvaluatedKey")
-            total_count = len(events)
+        events = response.get("Items", [])
+        next_token = response.get("LastEvaluatedKey")
+        total_count = len(events)
 
-        logger.info(f"Total events fetched: {total_count}")
+    logger.info(f"Total events fetched: {total_count}")
 
-        return _response(
-            200,
-            {
-                "status": "success",
-                "message": "Events fetched successfully.",
-                "pagination": {
-                    "limit": limit,
-                    "total": total_count,
-                    "next_token": next_token if next_token else None,
-                },
-                "events": events,
+    return http_response(
+        200,
+        {
+            "status": "success",
+            "message": "Events fetched successfully.",
+            "pagination": {
+                "limit": limit,
+                "total": total_count,
+                "next_token": next_token if next_token else None,
             },
-        )
-
-    except Exception as e:
-        logger.exception("Error fetching events")
-        return _response(500, {"status": "error", "message": str(e)})
+            "events": events,
+        },
+    )
 
 
 # -----------------------------------------------
@@ -107,6 +110,7 @@ def lambda_handler(event, context):
 # -----------------------------------------------
 def search_events(search, limit, exclusive_start_key):
     """Search events by partial match on name or city."""
+
     search_lower = search.lower()
 
     # If user provides a city name, use GSI for efficiency
@@ -171,7 +175,7 @@ def fetch_events_within_bounds(lat, lng, limit):
             try:
                 lat_cp = Decimal(str(cp.get("lat", 0)))
                 lng_cp = Decimal(str(cp.get("lng", 0)))
-            except Exception:
+            except (ValueError, TypeError):
                 continue
 
             if min_lat <= lat_cp <= max_lat and min_lng <= lng_cp <= max_lng:

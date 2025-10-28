@@ -1,10 +1,16 @@
+"""
+Lambda function to handle user registration using AWS Cognito.
+"""
+
 import json
 import os
 from time import time
 import boto3
 from aws_lambda_powertools import Logger
 from aws_lambda_powertools.utilities.validation import validate
-from middleware import middleware, _response, _cors_response
+
+# pylint: disable=import-error
+from middleware import middleware, http_response, cors_response
 from validation_schema import schema
 
 # Configure logging
@@ -20,12 +26,14 @@ cognito_client = boto3.client("cognito-idp")
 @logger.inject_lambda_context(log_event=True)
 @middleware
 def lambda_handler(event, context):
+    """Handles user registration and returns user information."""
+
     # Extract request information for logging
     request_id = context.aws_request_id
     logger.append_keys(request_id=request_id)
 
     # Handle preflight OPTIONS request
-    cors_resp = _cors_response(event.get("httpMethod"))
+    cors_resp = cors_response(event.get("httpMethod"))
     if cors_resp:
         return cors_resp
 
@@ -48,6 +56,8 @@ def lambda_handler(event, context):
 
 
 def register_user(email, password, username, six_digit_code):
+    """Register a new user in Cognito and return user information."""
+
     # Register user in Cognito
     response = cognito_client.sign_up(
         ClientId=USER_POOL_CLIENT_ID,
@@ -65,7 +75,7 @@ def register_user(email, password, username, six_digit_code):
 
     logger.info("User sign-up successful", extra={"user_sub": response["UserSub"]})
 
-    return _response(
+    return http_response(
         200,
         {
             "status": "success",

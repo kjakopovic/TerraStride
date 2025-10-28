@@ -1,3 +1,8 @@
+"""
+Generate a cdk.json file from environment variables or a .env file.
+Optionally filter specific keys to include in the context.
+"""
+
 import json
 import os
 import argparse
@@ -25,7 +30,7 @@ def generate_cdk_json(env_path=None, output_path="cdk.json", keys=None):
     else:
         # Parse .env manually to preserve only entries explicitly defined there
         env_vars = {}
-        with open(env_path, "r") as f:
+        with open(env_path, "r", encoding="utf-8") as f:
             for line in f:
                 line = line.strip()
                 if not line or line.startswith("#") or "=" not in line:
@@ -40,7 +45,7 @@ def generate_cdk_json(env_path=None, output_path="cdk.json", keys=None):
     os.makedirs(os.path.dirname(output_path) or ".", exist_ok=True)
 
     # Write to file
-    with open(output_path, "w") as f:
+    with open(output_path, "w", encoding="utf-8") as f:
         json.dump(cdk_json, f, indent=2)
 
     print(f"✅ Generated '{output_path}' using environment variables")
