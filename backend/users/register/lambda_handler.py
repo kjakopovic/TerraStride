@@ -12,6 +12,7 @@ from aws_lambda_powertools.utilities.validation import validate
 # pylint: disable=import-error
 from middleware import middleware, http_response, cors_response
 from validation_schema import schema
+from datetime import datetime, timezone
 
 # Configure logging
 logger = Logger()
@@ -69,6 +70,10 @@ def register_user(email, password, username, six_digit_code):
             {"Name": "custom:six_digit_code", "Value": six_digit_code},
             {"Name": "custom:coin_balance", "Value": str(0)},
             {"Name": "custom:token_balance", "Value": str(0)},
+            {
+                "Name": "custom:last_mined",
+                "Value": str(int(datetime.now(timezone.utc).timestamp())),
+            },
             {"Name": "custom:territory_blocks", "Value": str(0)},
             {"Name": "custom:created_at", "Value": str(time())},
         ],

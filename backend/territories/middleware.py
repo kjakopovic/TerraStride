@@ -156,9 +156,9 @@ def cors_response(method):
     return None
 
 
-def get_user_id(headers):
+def get_user_attributes(headers: dict) -> dict:
     """
-    Extract user ID from Cognito using access token in headers.
+    Retrieve user attributes from Cognito using an access token.
     """
 
     auth_header = headers.get("access_token")
@@ -185,6 +185,16 @@ def get_user_id(headers):
     user_attributes = {
         attr["Name"]: attr["Value"] for attr in response["UserAttributes"]
     }
+
+    return user_attributes
+
+
+def get_user_id(headers):
+    """
+    Extract user ID from Cognito using access token in headers.
+    """
+
+    user_attributes = get_user_attributes(headers)
 
     # Extract user id
     user_id = user_attributes.get("sub")
