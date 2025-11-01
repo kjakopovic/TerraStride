@@ -3,3 +3,4 @@
 **/cdk.context.json
 **/cdk.json
 **/node_modules
+**/package-lock.json
