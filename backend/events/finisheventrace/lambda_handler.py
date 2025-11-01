@@ -128,7 +128,6 @@ def lambda_handler(event, context):
         "number_of_steps": number_of_steps,
         "duration_in_seconds": duration_in_seconds,
         "average_pace_min_per_km": ((duration_in_seconds / km_long) / Decimal("60")),
-        "checkpoints": checkpoints,
         "finished_at": datetime.now(timezone.utc).isoformat(),
     }
 

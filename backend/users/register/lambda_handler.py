@@ -68,6 +68,7 @@ def register_user(email, password, username, six_digit_code):
             {"Name": "custom:name", "Value": username},
             {"Name": "custom:six_digit_code", "Value": six_digit_code},
             {"Name": "custom:coin_balance", "Value": str(0)},
+            {"Name": "custom:token_balance", "Value": str(0)},
             {"Name": "custom:territory_blocks", "Value": str(0)},
             {"Name": "custom:created_at", "Value": str(time())},
         ],
