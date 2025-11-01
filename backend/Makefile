@@ -61,6 +61,12 @@ build-events:build
 deploy-events:SERVICE=events
 deploy-events:deploy
 
+build-crypto:SERVICE=crypto
+build-crypto:build
+
+deploy-crypto:SERVICE=crypto
+deploy-crypto:deploy
+
 # ---------------------------
 # 💡 Scripts
 # ---------------------------
@@ -73,3 +79,6 @@ generate-users-cdk: generate-cdk
 
 generate-events-cdk: SERVICE=events
 generate-events-cdk: generate-cdk
+
+generate-crypto-cdk: SERVICE=crypto
+generate-crypto-cdk: generate-cdk
