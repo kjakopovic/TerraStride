@@ -84,6 +84,13 @@ def get_user_attributes(headers):
         if attr_name.startswith("custom:"):
             attr_name = attr_name[7:]  # Remove 'custom:' (7 characters)
 
+        # Drop sensitive Solana private key attribute
+        if (
+            attr["Name"] == "custom:solana_private_key"
+            or attr_name == "solana_private_key"
+        ):
+            continue
+
         if (
             attr["Name"] == "custom:territory_blocks"
             or attr["Name"] == "custom:coin_balance"

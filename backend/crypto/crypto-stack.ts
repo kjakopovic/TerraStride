@@ -26,7 +26,7 @@ export class CryptoStack extends cdk.Stack {
           secretStringTemplate: JSON.stringify({
             dummy: "replace-with-base58-key",
           }),
-          generateStringKey: "key", // will be replaced later with real key
+          generateStringKey: "key",
         },
       }
     );
@@ -73,7 +73,6 @@ export class CryptoStack extends cdk.Stack {
       resources: [userPoolArn],
     });
 
-    // Grant Lambda access to Secrets Manager secret
     const secretsPolicy = new iam.PolicyStatement({
       actions: [
         "secretsmanager:GetSecretValue",
@@ -82,7 +81,7 @@ export class CryptoStack extends cdk.Stack {
       resources: [platformWalletSecret.secretArn],
     });
 
-    // Create API Gateway
+    // API Gateway
     const api = new apigw.RestApi(this, "CryptoApi", {
       restApiName: "Crypto API",
       description: "Web3 endpoints for wallet & USDC operations",
@@ -93,7 +92,8 @@ export class CryptoStack extends cdk.Stack {
     });
 
     for (const fn of lambdas) {
-      const lambdaFolderPath = path.join(__dirname, "../lambdas", fn.folder);
+      // Adjusted path: crypto/<folder>
+      const lambdaFolderPath = path.join(__dirname, fn.folder);
 
       const lambdaFn = new lambdaNode.NodejsFunction(this, fn.id, {
         runtime: lambda.Runtime.NODEJS_20_X,
@@ -110,11 +110,18 @@ export class CryptoStack extends cdk.Stack {
       lambdaFn.addToRolePolicy(cognitoPolicy);
       lambdaFn.addToRolePolicy(secretsPolicy);
 
-      // Register Lambda with API Gateway
+      // API Gateway
       let resource: apigw.IResource = api.root;
+
       for (const segment of fn.apiPath) {
-        resource = resource.addResource(segment);
+        // Check if the child resource already exists
+        let child = resource.getResource(segment);
+        if (!child) {
+          child = resource.addResource(segment);
+        }
+        resource = child;
       }
+
       resource.addMethod("POST", new apigw.LambdaIntegration(lambdaFn));
     }
 
