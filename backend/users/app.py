@@ -1,3 +1,7 @@
+"""
+AWS CDK Stack for Terrastride Users Service
+"""
+
 from aws_cdk import (
     App,
     Stack,
@@ -13,6 +17,8 @@ from constructs import Construct
 
 
 class TerrastrideUsersStack(Stack):
+    """AWS CDK Stack for Terrastride Users Service"""
+
     def __init__(self, scope: Construct, construct_id: str, **kwargs) -> None:
         super().__init__(scope, construct_id, **kwargs)
 
@@ -82,11 +88,16 @@ class TerrastrideUsersStack(Stack):
             code=_lambda.Code.from_asset(
                 ".",
                 bundling={
-                    "image": _lambda.Runtime.PYTHON_3_12.bundling_image,
+                    "image": _lambda.Runtime.PYTHON_3_12.bundling_image,  # pylint: disable=no-member
                     "command": [
                         "bash",
                         "-c",
-                        "cd register && pip install aws-lambda-powertools fastjsonschema -t /asset-output && cp -r . /asset-output && cp ../middleware.py /asset-output",
+                        (
+                            "cd register && "
+                            "pip install aws-lambda-powertools fastjsonschema -t /asset-output && "
+                            "cp -r . /asset-output && "
+                            "cp ../middleware.py /asset-output"
+                        ),
                     ],
                 },
             ),
@@ -108,11 +119,16 @@ class TerrastrideUsersStack(Stack):
             code=_lambda.Code.from_asset(
                 ".",
                 bundling={
-                    "image": _lambda.Runtime.PYTHON_3_12.bundling_image,
+                    "image": _lambda.Runtime.PYTHON_3_12.bundling_image,  # pylint: disable=no-member
                     "command": [
                         "bash",
                         "-c",
-                        "cd login && pip install aws-lambda-powertools fastjsonschema -t /asset-output && cp -r . /asset-output && cp ../middleware.py /asset-output",
+                        (
+                            "cd login && "
+                            "pip install aws-lambda-powertools fastjsonschema -t /asset-output && "
+                            "cp -r . /asset-output && "
+                            "cp ../middleware.py /asset-output"
+                        ),
                     ],
                 },
             ),
@@ -134,11 +150,16 @@ class TerrastrideUsersStack(Stack):
             code=_lambda.Code.from_asset(
                 ".",
                 bundling={
-                    "image": _lambda.Runtime.PYTHON_3_12.bundling_image,
+                    "image": _lambda.Runtime.PYTHON_3_12.bundling_image,  # pylint: disable=no-member
                     "command": [
                         "bash",
                         "-c",
-                        "cd getuserinfo && pip install aws-lambda-powertools fastjsonschema -t /asset-output && cp -r . /asset-output && cp ../middleware.py /asset-output",
+                        (
+                            "cd getuserinfo && "
+                            "pip install aws-lambda-powertools fastjsonschema -t /asset-output && "
+                            "cp -r . /asset-output && "
+                            "cp ../middleware.py /asset-output"
+                        ),
                     ],
                 },
             ),
@@ -158,11 +179,16 @@ class TerrastrideUsersStack(Stack):
             code=_lambda.Code.from_asset(
                 ".",
                 bundling={
-                    "image": _lambda.Runtime.PYTHON_3_12.bundling_image,
+                    "image": _lambda.Runtime.PYTHON_3_12.bundling_image,  # pylint: disable=no-member
                     "command": [
                         "bash",
                         "-c",
-                        "cd resendverification && pip install aws-lambda-powertools fastjsonschema -t /asset-output && cp -r . /asset-output && cp ../middleware.py /asset-output",
+                        (
+                            "cd resendverification && "
+                            "pip install aws-lambda-powertools fastjsonschema -t /asset-output && "
+                            "cp -r . /asset-output && "
+                            "cp ../middleware.py /asset-output"
+                        ),
                     ],
                 },
             ),
@@ -183,11 +209,16 @@ class TerrastrideUsersStack(Stack):
             code=_lambda.Code.from_asset(
                 ".",
                 bundling={
-                    "image": _lambda.Runtime.PYTHON_3_12.bundling_image,
+                    "image": _lambda.Runtime.PYTHON_3_12.bundling_image,  # pylint: disable=no-member
                     "command": [
                         "bash",
                         "-c",
-                        "cd sendverification && pip install aws-lambda-powertools fastjsonschema -t /asset-output && cp -r . /asset-output && cp ../middleware.py /asset-output",
+                        (
+                            "cd sendverification && "
+                            "pip install aws-lambda-powertools fastjsonschema -t /asset-output && "
+                            "cp -r . /asset-output && "
+                            "cp ../middleware.py /asset-output"
+                        ),
                     ],
                 },
             ),

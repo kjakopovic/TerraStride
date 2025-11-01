@@ -1,5 +1,6 @@
 """
-Lambda that allows users to attend events if they are active and the user has sufficient balance.
+Lambda that allows users to buy event tickets if they are active
+and the user has sufficient balance.
 """
 
 import os
@@ -37,7 +38,7 @@ cognito_client = boto3.client("cognito-idp", region_name=AWS_REGION)
 @logger.inject_lambda_context(log_event=True)
 @middleware
 def lambda_handler(event, context):
-    """Allows a user to attend an event if it's active and they have enough balance."""
+    """Allows user to buy an event ticket if it's active and they have enough balance."""
 
     request_id = context.aws_request_id
     logger.append_keys(request_id=request_id)

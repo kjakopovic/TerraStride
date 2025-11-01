@@ -1,3 +1,8 @@
+"""
+AWS CDK Stack for Terrastride Territories Service
+Defines DynamoDB table, Lambda functions, and API Gateway.
+"""
+
 import os
 from aws_cdk import (
     App,
@@ -14,6 +19,8 @@ from constructs import Construct
 
 
 class TerrastrideTerritoriesStack(Stack):
+    """AWS CDK Stack for Terrastride Territories Service"""
+
     def __init__(self, scope: Construct, construct_id: str, **kwargs):
         super().__init__(scope, construct_id, **kwargs)
 
@@ -24,7 +31,7 @@ class TerrastrideTerritoriesStack(Stack):
 
         # Territories:
         # PK: id (UUID as string)
-        # GSI: user_id-index -> partition user_id, sort created_at (to list a user's territories)
+        # GSI: user_id-index -> partition user_id, sort created_at
         territories_table = dynamodb.Table(
             self,
             "TerritoriesTable",
@@ -70,11 +77,16 @@ class TerrastrideTerritoriesStack(Stack):
             code=_lambda.Code.from_asset(
                 ".",
                 bundling={
-                    "image": _lambda.Runtime.PYTHON_3_12.bundling_image,
+                    "image": _lambda.Runtime.PYTHON_3_12.bundling_image,  # pylint: disable=no-member
                     "command": [
                         "bash",
                         "-c",
-                        "cd healthcheck && pip install aws-lambda-powertools fastjsonschema -t /asset-output && cp -r . /asset-output && cp ../middleware.py /asset-output",
+                        (
+                            "cd healthcheck && "
+                            "pip install aws-lambda-powertools fastjsonschema -t /asset-output && "
+                            "cp -r . /asset-output && "
+                            "cp ../middleware.py /asset-output"
+                        ),
                     ],
                 },
             ),
@@ -93,11 +105,16 @@ class TerrastrideTerritoriesStack(Stack):
             code=_lambda.Code.from_asset(
                 ".",
                 bundling={
-                    "image": _lambda.Runtime.PYTHON_3_12.bundling_image,
+                    "image": _lambda.Runtime.PYTHON_3_12.bundling_image,  # pylint: disable=no-member
                     "command": [
                         "bash",
                         "-c",
-                        "cd listterritories && pip install aws-lambda-powertools fastjsonschema -t /asset-output && cp -r . /asset-output && cp ../middleware.py /asset-output",
+                        (
+                            "cd listterritories && "
+                            "pip install aws-lambda-powertools fastjsonschema -t /asset-output && "
+                            "cp -r . /asset-output && "
+                            "cp ../middleware.py /asset-output"
+                        ),
                     ],
                 },
             ),
@@ -116,11 +133,16 @@ class TerrastrideTerritoriesStack(Stack):
             code=_lambda.Code.from_asset(
                 ".",
                 bundling={
-                    "image": _lambda.Runtime.PYTHON_3_12.bundling_image,
+                    "image": _lambda.Runtime.PYTHON_3_12.bundling_image,  # pylint: disable=no-member
                     "command": [
                         "bash",
                         "-c",
-                        "cd assignterritoriestouser && pip install aws-lambda-powertools fastjsonschema -t /asset-output && cp -r . /asset-output && cp ../middleware.py /asset-output",
+                        (
+                            "cd assignterritoriestouser && "
+                            "pip install aws-lambda-powertools fastjsonschema -t /asset-output && "
+                            "cp -r . /asset-output && "
+                            "cp ../middleware.py /asset-output"
+                        ),
                     ],
                 },
             ),
