@@ -154,12 +154,43 @@ class TerrastrideTerritoriesStack(Stack):
             timeout=Duration.seconds(30),
         )
 
+        mine_territory_coins_lambda = _lambda.Function(
+            self,
+            "MineTerritoryCoinsLambda",
+            runtime=_lambda.Runtime.PYTHON_3_12,
+            handler="lambda_handler.lambda_handler",
+            code=_lambda.Code.from_asset(
+                ".",
+                bundling={
+                    "image": _lambda.Runtime.PYTHON_3_12.bundling_image,  # pylint: disable=no-member
+                    "command": [
+                        "bash",
+                        "-c",
+                        (
+                            "cd mineterritorycoins && "
+                            "pip install aws-lambda-powertools fastjsonschema -t /asset-output && "
+                            "cp -r . /asset-output && "
+                            "cp ../middleware.py /asset-output"
+                        ),
+                    ],
+                },
+            ),
+            environment={
+                "POWERTOOLS_SERVICE_NAME": "territories",
+                "TERRITORIES_TABLE": territories_table.table_name,
+                "USER_POOL_ID": user_pool_id,
+            },
+            timeout=Duration.seconds(30),
+        )
+
         # Grant Lambda read access to the DB secret
         territories_table.grant_read_write_data(list_territories_lambda)
         territories_table.grant_read_write_data(assign_territories_lambda)
+        territories_table.grant_read_write_data(mine_territory_coins_lambda)
 
         list_territories_lambda.add_to_role_policy(cognito_policy)
         assign_territories_lambda.add_to_role_policy(cognito_policy)
+        mine_territory_coins_lambda.add_to_role_policy(cognito_policy)
 
         # API Gateway
         api = apigw.RestApi(
@@ -185,6 +216,7 @@ class TerrastrideTerritoriesStack(Stack):
 
         # API Gateway Resources and Methods
         api.root.add_resource("healthcheck").add_method("GET", healthcheck_integration)
+        api.root.add_resource("mine").add_method("POST", mine_territory_coins_lambda)
         api.root.add_method("GET", list_territories_integration)
         api.root.add_method("POST", assign_territories_integration)
 
