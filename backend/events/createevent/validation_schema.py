@@ -13,6 +13,10 @@ schema = {
             "type": "number",
             "minimum": 0,
         },
+        "km_long": {
+            "type": "number",
+            "minimum": 0,
+        },
         "date": {
             "type": "string",
             "pattern": "^\\d{4}-\\d{2}-\\d{2}$",  # YYYY-MM-DD format
@@ -63,6 +67,7 @@ schema = {
     "required": [
         "name",
         "city",
+        "km_long",
         "date",
         "startTime",
         "checkpoints",

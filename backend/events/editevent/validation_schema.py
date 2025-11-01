@@ -9,6 +9,10 @@ schema = {
             "type": "string",
             "maxLength": 50,
         },
+        "km_long": {
+            "type": "number",
+            "minimum": 0,
+        },
         "entry_fee": {
             "type": "number",
             "minimum": 0,
@@ -63,6 +67,7 @@ schema = {
     "required": [
         "name",
         "city",
+        "km_long",
         "date",
         "startTime",
         "checkpoints",

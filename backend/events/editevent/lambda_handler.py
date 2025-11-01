@@ -60,6 +60,7 @@ def lambda_handler(event, context):
     name_lower = name.lower()
     city = body["city"]
     city_lower = city.lower()
+    km_long = Decimal(str(body["km_long"]))
     date_str = body["date"]
     start_time = body["startTime"]
     entry_fee = Decimal(str(body["entry_fee"]) if "entry_fee" in body else "0.0")
@@ -79,13 +80,14 @@ def lambda_handler(event, context):
             "enddate = :enddate, entry_fee = :entry_fee, "
             "checkpoints = :checkpoints, trace = :trace, "
             "updated_at = :updated_at, name_lower = :name_lower, "
-            "city_lower = :city_lower"
+            "city_lower = :city_lower, km_long = :km_long"
         ),
         ConditionExpression="user_id = :user_id AND attribute_not_exists(deleted_at)",
         ExpressionAttributeNames={"#name": "name"},
         ExpressionAttributeValues={
             ":name": name,
             ":city": city,
+            ":km_long": km_long,
             ":startdate": start_datetime.isoformat(),
             ":enddate": end_datetime.isoformat(),
             ":entry_fee": entry_fee,

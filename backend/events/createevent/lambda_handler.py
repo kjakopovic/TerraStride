@@ -56,6 +56,7 @@ def lambda_handler(event, context):
     # Extract main event info
     name = event_body["name"]
     city = event_body["city"]
+    km_long = Decimal(str(event_body["km_long"]))
     entry_fee = Decimal(str(event_body["entry_fee"]))
     date_str = event_body["date"]  # YYYY-MM-DD
     start_time = event_body["startTime"]  # HH:MM
@@ -79,6 +80,7 @@ def lambda_handler(event, context):
         "name_lower": name.lower(),
         "city": city,
         "city_lower": city.lower(),
+        "km_long": km_long,
         "startdate": start_datetime.isoformat(),
         "enddate": end_datetime.isoformat(),
         "entry_fee": entry_fee,
