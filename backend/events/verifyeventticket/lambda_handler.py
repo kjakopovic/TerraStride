@@ -3,7 +3,6 @@ Lambda function to spend bought event ticket on a run
 """
 
 import os
-from decimal import Decimal
 from datetime import datetime, timezone
 import boto3
 from aws_lambda_powertools import Logger
@@ -96,22 +95,6 @@ def lambda_handler(event, context):
             "event_id": event_id,
         },
     )
-
-
-def normalize_list(data_list):
-    """Convert float values in a list of dicts to Decimal."""
-
-    normalized = []
-    for item in data_list:
-        normalized_item = {}
-        for k, v in item.items():
-            if isinstance(v, float):
-                normalized_item[k] = Decimal(str(v))
-            else:
-                normalized_item[k] = v
-        normalized.append(normalized_item)
-
-    return normalized
 
 
 def get_event_ticket(event_ticket_id):

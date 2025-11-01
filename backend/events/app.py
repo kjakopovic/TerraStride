@@ -335,6 +335,35 @@ class TerrastrideEventsStack(Stack):
             timeout=Duration.seconds(30),
         )
 
+        get_user_tickets_lambda = _lambda.Function(
+            self,
+            "GetUserTicketsLambda",
+            runtime=_lambda.Runtime.PYTHON_3_12,
+            handler="lambda_handler.lambda_handler",
+            code=_lambda.Code.from_asset(
+                ".",
+                bundling={
+                    "image": _lambda.Runtime.PYTHON_3_12.bundling_image,  # pylint: disable=no-member
+                    "command": [
+                        "bash",
+                        "-c",
+                        (
+                            "cd getuseractivetickets && "
+                            "pip install aws-lambda-powertools fastjsonschema -t /asset-output && "
+                            "cp -r . /asset-output && "
+                            "cp ../middleware.py /asset-output"
+                        ),
+                    ],
+                },
+            ),
+            environment={
+                "POWERTOOLS_SERVICE_NAME": "events",
+                "USER_POOL_ID": user_pool_id,
+                "EVENT_TICKETS_TABLE": event_tickets_table.table_name,
+            },
+            timeout=Duration.seconds(30),
+        )
+
         # Grant Lambda read access to the DB secret
         events_table.grant_read_write_data(buy_event_ticket_lambda)
         events_table.grant_read_write_data(create_event_lambda)
@@ -350,6 +379,8 @@ class TerrastrideEventsStack(Stack):
         event_tickets_table.grant_read_write_data(edit_event_lambda)
         event_tickets_table.grant_read_write_data(list_events_lambda)
         event_tickets_table.grant_read_write_data(verify_event_ticket_lambda)
+        event_tickets_table.grant_read_write_data(finish_event_race_lambda)
+        event_tickets_table.grant_read_write_data(get_user_tickets_lambda)
 
         buy_event_ticket_lambda.add_to_role_policy(cognito_policy)
 
@@ -381,6 +412,7 @@ class TerrastrideEventsStack(Stack):
         finish_event_race_integration = apigw.LambdaIntegration(
             finish_event_race_lambda
         )
+        get_user_tickets_integration = apigw.LambdaIntegration(get_user_tickets_lambda)
 
         # API Gateway Resources and Methods
 
@@ -412,6 +444,11 @@ class TerrastrideEventsStack(Stack):
         # POST /events/{event_id}/finish → finish event race
         event_id_resource.add_resource("finish").add_method(
             "POST", finish_event_race_integration
+        )
+
+        # GET /events/{event_id}/tickets → get user's active tickets for event
+        event_id_resource.add_resource("tickets").add_method(
+            "GET", get_user_tickets_integration
         )
 
         # PUT /events/{event_id} → edit specific event
