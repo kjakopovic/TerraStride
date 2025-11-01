@@ -269,17 +269,51 @@ class TerrastrideEventsStack(Stack):
             timeout=Duration.seconds(30),
         )
 
+        spend_event_ticket_lambda = _lambda.Function(
+            self,
+            "SpendEventTicketLambda",
+            runtime=_lambda.Runtime.PYTHON_3_12,
+            handler="lambda_handler.lambda_handler",
+            code=_lambda.Code.from_asset(
+                ".",
+                bundling={
+                    "image": _lambda.Runtime.PYTHON_3_12.bundling_image,  # pylint: disable=no-member
+                    "command": [
+                        "bash",
+                        "-c",
+                        (
+                            "cd spendeventticket && "
+                            "pip install aws-lambda-powertools fastjsonschema -t /asset-output && "
+                            "cp -r . /asset-output && "
+                            "cp ../middleware.py /asset-output"
+                        ),
+                    ],
+                },
+            ),
+            environment={
+                "POWERTOOLS_SERVICE_NAME": "events",
+                "USER_POOL_ID": user_pool_id,
+                "EVENTS_TABLE": events_table.table_name,
+                "EVENT_TICKETS_TABLE": event_tickets_table.table_name,
+            },
+            timeout=Duration.seconds(30),
+        )
+
         # Grant Lambda read access to the DB secret
         events_table.grant_read_write_data(buy_event_ticket_lambda)
         events_table.grant_read_write_data(create_event_lambda)
         events_table.grant_read_write_data(delete_event_lambda)
         events_table.grant_read_write_data(edit_event_lambda)
         events_table.grant_read_write_data(list_events_lambda)
+        events_table.grant_read_write_data(spend_event_ticket_lambda)
+
         event_tickets_table.grant_read_write_data(buy_event_ticket_lambda)
         event_tickets_table.grant_read_write_data(create_event_lambda)
         event_tickets_table.grant_read_write_data(delete_event_lambda)
         event_tickets_table.grant_read_write_data(edit_event_lambda)
         event_tickets_table.grant_read_write_data(list_events_lambda)
+        event_tickets_table.grant_read_write_data(spend_event_ticket_lambda)
+
         buy_event_ticket_lambda.add_to_role_policy(cognito_policy)
 
         # API Gateway
@@ -300,6 +334,9 @@ class TerrastrideEventsStack(Stack):
         # API Gateway Integrations
         healthcheck_integration = apigw.LambdaIntegration(healthcheck_lambda)
         buy_event_ticket_integration = apigw.LambdaIntegration(buy_event_ticket_lambda)
+        spend_event_ticket_integration = apigw.LambdaIntegration(
+            spend_event_ticket_lambda
+        )
         create_event_integration = apigw.LambdaIntegration(create_event_lambda)
         delete_event_integration = apigw.LambdaIntegration(delete_event_lambda)
         edit_event_integration = apigw.LambdaIntegration(edit_event_lambda)
@@ -310,9 +347,17 @@ class TerrastrideEventsStack(Stack):
         # GET /events/healthcheck → check is service active and healthy
         api.root.add_resource("healthcheck").add_method("GET", healthcheck_integration)
 
+        tickets_resource = api.root.add_resource("tickets")
+
         # POST /events/tickets/buy → buy event ticket
-        api.root.add_resource("tickets").add_resource("buy").add_method(
+        tickets_resource.add_resource("buy").add_method(
             "POST", buy_event_ticket_integration
+        )
+
+        # POST /events/tickets/spend/{event_ticket_id} → spend event ticket
+        spend_ticket_resource = tickets_resource.add_resource("spend")
+        spend_ticket_resource.add_resource("{event_ticket_id}").add_method(
+            "POST", spend_event_ticket_integration
         )
 
         # GET /events → list all events

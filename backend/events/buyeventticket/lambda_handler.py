@@ -129,6 +129,7 @@ def lambda_handler(event, context):
             "id": ticket_id,
             "user_id": user_id,
             "price": str(entry_fee),
+            "is_used": False,
             "created_at": datetime.utcnow().isoformat(),
         }
     )
