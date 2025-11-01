@@ -81,6 +81,7 @@ def lambda_handler(event, context):
         "city": city,
         "city_lower": city.lower(),
         "km_long": km_long,
+        "is_distributed": 0,
         "startdate": start_datetime.isoformat(),
         "enddate": end_datetime.isoformat(),
         "entry_fee": entry_fee,

@@ -11,10 +11,30 @@ from aws_cdk import (
     aws_lambda as _lambda,
     aws_apigateway as apigw,
     aws_dynamodb as dynamodb,
+    aws_events as events,
+    aws_events_targets as targets,
     RemovalPolicy,
     aws_iam as iam,
 )
 from constructs import Construct
+
+
+def lambda_bundling(directory: str):
+    """Helper function for Lambda bundling configuration."""
+
+    return {
+        "image": _lambda.Runtime.PYTHON_3_12.bundling_image,  # pylint: disable=no-member
+        "command": [
+            "bash",
+            "-c",
+            (
+                f"cd {directory} && "
+                "pip install aws-lambda-powertools fastjsonschema -t /asset-output && "
+                "cp -r . /asset-output && "
+                "cp ../middleware.py /asset-output"
+            ),
+        ],
+    }
 
 
 class TerrastrideEventsStack(Stack):
@@ -68,10 +88,14 @@ class TerrastrideEventsStack(Stack):
             removal_policy=RemovalPolicy.DESTROY,
         )
 
-        event_tickets_table.add_global_secondary_index(
-            index_name="event_id-index",
+        events_table.add_global_secondary_index(
+            index_name="enddate-index",
             partition_key=dynamodb.Attribute(
-                name="event_id", type=dynamodb.AttributeType.STRING
+                name="is_distributed",
+                type=dynamodb.AttributeType.NUMBER,
+            ),
+            sort_key=dynamodb.Attribute(
+                name="enddate", type=dynamodb.AttributeType.STRING
             ),
         )
 
@@ -104,19 +128,7 @@ class TerrastrideEventsStack(Stack):
             handler="lambda_handler.lambda_handler",
             code=_lambda.Code.from_asset(
                 ".",
-                bundling={
-                    "image": _lambda.Runtime.PYTHON_3_12.bundling_image,  # pylint: disable=no-member
-                    "command": [
-                        "bash",
-                        "-c",
-                        (
-                            "cd healthcheck && "
-                            "pip install aws-lambda-powertools fastjsonschema -t /asset-output && "
-                            "cp -r . /asset-output && "
-                            "cp ../middleware.py /asset-output"
-                        ),
-                    ],
-                },
+                bundling=lambda_bundling("healthcheck"),
             ),
             environment={
                 "POWERTOOLS_SERVICE_NAME": "events",
@@ -132,19 +144,7 @@ class TerrastrideEventsStack(Stack):
             handler="lambda_handler.lambda_handler",
             code=_lambda.Code.from_asset(
                 ".",
-                bundling={
-                    "image": _lambda.Runtime.PYTHON_3_12.bundling_image,  # pylint: disable=no-member
-                    "command": [
-                        "bash",
-                        "-c",
-                        (
-                            "cd buyeventticket && "
-                            "pip install aws-lambda-powertools fastjsonschema -t /asset-output && "
-                            "cp -r . /asset-output && "
-                            "cp ../middleware.py /asset-output"
-                        ),
-                    ],
-                },
+                bundling=lambda_bundling("buyeventticket"),
             ),
             environment={
                 "POWERTOOLS_SERVICE_NAME": "events",
@@ -162,19 +162,7 @@ class TerrastrideEventsStack(Stack):
             handler="lambda_handler.lambda_handler",
             code=_lambda.Code.from_asset(
                 ".",
-                bundling={
-                    "image": _lambda.Runtime.PYTHON_3_12.bundling_image,  # pylint: disable=no-member
-                    "command": [
-                        "bash",
-                        "-c",
-                        (
-                            "cd createevent && "
-                            "pip install aws-lambda-powertools fastjsonschema -t /asset-output && "
-                            "cp -r . /asset-output && "
-                            "cp ../middleware.py /asset-output"
-                        ),
-                    ],
-                },
+                bundling=lambda_bundling("createevent"),
             ),
             environment={
                 "POWERTOOLS_SERVICE_NAME": "events",
@@ -192,19 +180,7 @@ class TerrastrideEventsStack(Stack):
             handler="lambda_handler.lambda_handler",
             code=_lambda.Code.from_asset(
                 ".",
-                bundling={
-                    "image": _lambda.Runtime.PYTHON_3_12.bundling_image,  # pylint: disable=no-member
-                    "command": [
-                        "bash",
-                        "-c",
-                        (
-                            "cd deleteevent && "
-                            "pip install aws-lambda-powertools fastjsonschema -t /asset-output && "
-                            "cp -r . /asset-output && "
-                            "cp ../middleware.py /asset-output"
-                        ),
-                    ],
-                },
+                bundling=lambda_bundling("deleteevent"),
             ),
             environment={
                 "POWERTOOLS_SERVICE_NAME": "events",
@@ -222,19 +198,7 @@ class TerrastrideEventsStack(Stack):
             handler="lambda_handler.lambda_handler",
             code=_lambda.Code.from_asset(
                 ".",
-                bundling={
-                    "image": _lambda.Runtime.PYTHON_3_12.bundling_image,  # pylint: disable=no-member
-                    "command": [
-                        "bash",
-                        "-c",
-                        (
-                            "cd editevent && "
-                            "pip install aws-lambda-powertools fastjsonschema -t /asset-output && "
-                            "cp -r . /asset-output && "
-                            "cp ../middleware.py /asset-output"
-                        ),
-                    ],
-                },
+                bundling=lambda_bundling("editevent"),
             ),
             environment={
                 "POWERTOOLS_SERVICE_NAME": "events",
@@ -252,19 +216,7 @@ class TerrastrideEventsStack(Stack):
             handler="lambda_handler.lambda_handler",
             code=_lambda.Code.from_asset(
                 ".",
-                bundling={
-                    "image": _lambda.Runtime.PYTHON_3_12.bundling_image,  # pylint: disable=no-member
-                    "command": [
-                        "bash",
-                        "-c",
-                        (
-                            "cd listevents && "
-                            "pip install aws-lambda-powertools fastjsonschema -t /asset-output && "
-                            "cp -r . /asset-output && "
-                            "cp ../middleware.py /asset-output"
-                        ),
-                    ],
-                },
+                bundling=lambda_bundling("listevents"),
             ),
             environment={
                 "POWERTOOLS_SERVICE_NAME": "events",
@@ -282,19 +234,7 @@ class TerrastrideEventsStack(Stack):
             handler="lambda_handler.lambda_handler",
             code=_lambda.Code.from_asset(
                 ".",
-                bundling={
-                    "image": _lambda.Runtime.PYTHON_3_12.bundling_image,  # pylint: disable=no-member
-                    "command": [
-                        "bash",
-                        "-c",
-                        (
-                            "cd verifyeventticket && "
-                            "pip install aws-lambda-powertools fastjsonschema -t /asset-output && "
-                            "cp -r . /asset-output && "
-                            "cp ../middleware.py /asset-output"
-                        ),
-                    ],
-                },
+                bundling=lambda_bundling("verifyeventticket"),
             ),
             environment={
                 "POWERTOOLS_SERVICE_NAME": "events",
@@ -312,19 +252,7 @@ class TerrastrideEventsStack(Stack):
             handler="lambda_handler.lambda_handler",
             code=_lambda.Code.from_asset(
                 ".",
-                bundling={
-                    "image": _lambda.Runtime.PYTHON_3_12.bundling_image,  # pylint: disable=no-member
-                    "command": [
-                        "bash",
-                        "-c",
-                        (
-                            "cd finisheventrace && "
-                            "pip install aws-lambda-powertools fastjsonschema -t /asset-output && "
-                            "cp -r . /asset-output && "
-                            "cp ../middleware.py /asset-output"
-                        ),
-                    ],
-                },
+                bundling=lambda_bundling("finisheventrace"),
             ),
             environment={
                 "POWERTOOLS_SERVICE_NAME": "events",
@@ -342,19 +270,7 @@ class TerrastrideEventsStack(Stack):
             handler="lambda_handler.lambda_handler",
             code=_lambda.Code.from_asset(
                 ".",
-                bundling={
-                    "image": _lambda.Runtime.PYTHON_3_12.bundling_image,  # pylint: disable=no-member
-                    "command": [
-                        "bash",
-                        "-c",
-                        (
-                            "cd getusersactivetickets && "
-                            "pip install aws-lambda-powertools fastjsonschema -t /asset-output && "
-                            "cp -r . /asset-output && "
-                            "cp ../middleware.py /asset-output"
-                        ),
-                    ],
-                },
+                bundling=lambda_bundling("getusersactivetickets"),
             ),
             environment={
                 "POWERTOOLS_SERVICE_NAME": "events",
@@ -362,6 +278,23 @@ class TerrastrideEventsStack(Stack):
                 "EVENT_TICKETS_TABLE": event_tickets_table.table_name,
             },
             timeout=Duration.seconds(30),
+        )
+
+        distribute_awards_lambda = _lambda.Function(
+            self,
+            "DistributeAwardsLambda",
+            runtime=_lambda.Runtime.PYTHON_3_12,
+            handler="lambda_handler.lambda_handler",
+            code=_lambda.Code.from_asset(
+                ".",
+                bundling=lambda_bundling("distributeawards"),
+            ),
+            environment={
+                "POWERTOOLS_SERVICE_NAME": "events",
+                "USER_POOL_ID": user_pool_id,
+                "EVENTS_TABLE": events_table.table_name,
+            },
+            timeout=Duration.minutes(10),
         )
 
         # Grant Lambda read access to the DB secret
@@ -372,6 +305,7 @@ class TerrastrideEventsStack(Stack):
         events_table.grant_read_write_data(list_events_lambda)
         events_table.grant_read_write_data(verify_event_ticket_lambda)
         events_table.grant_read_write_data(finish_event_race_lambda)
+        events_table.grant_read_write_data(distribute_awards_lambda)
 
         event_tickets_table.grant_read_write_data(buy_event_ticket_lambda)
         event_tickets_table.grant_read_write_data(create_event_lambda)
@@ -383,6 +317,16 @@ class TerrastrideEventsStack(Stack):
         event_tickets_table.grant_read_write_data(get_user_tickets_lambda)
 
         buy_event_ticket_lambda.add_to_role_policy(cognito_policy)
+        distribute_awards_lambda.add_to_role_policy(cognito_policy)
+
+        # CRON Job definition to run distribute awards daily at 22:00 UTC
+        daily_rule = events.Rule(
+            self,
+            "DailyJobSchedule",
+            schedule=events.Schedule.cron(minute="0", hour="22"),
+        )
+
+        daily_rule.add_target(targets.LambdaFunction(distribute_awards_lambda))
 
         # API Gateway
         api = apigw.RestApi(

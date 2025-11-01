@@ -16,6 +16,24 @@ from aws_cdk import (
 from constructs import Construct
 
 
+def lambda_bundling(directory: str):
+    """Helper function for Lambda bundling configuration."""
+
+    return {
+        "image": _lambda.Runtime.PYTHON_3_12.bundling_image,  # pylint: disable=no-member
+        "command": [
+            "bash",
+            "-c",
+            (
+                f"cd {directory} && "
+                "pip install aws-lambda-powertools fastjsonschema -t /asset-output && "
+                "cp -r . /asset-output && "
+                "cp ../middleware.py /asset-output"
+            ),
+        ],
+    }
+
+
 class TerrastrideUsersStack(Stack):
     """AWS CDK Stack for Terrastride Users Service"""
 
@@ -87,19 +105,7 @@ class TerrastrideUsersStack(Stack):
             handler="lambda_handler.lambda_handler",
             code=_lambda.Code.from_asset(
                 ".",
-                bundling={
-                    "image": _lambda.Runtime.PYTHON_3_12.bundling_image,  # pylint: disable=no-member
-                    "command": [
-                        "bash",
-                        "-c",
-                        (
-                            "cd register && "
-                            "pip install aws-lambda-powertools fastjsonschema -t /asset-output && "
-                            "cp -r . /asset-output && "
-                            "cp ../middleware.py /asset-output"
-                        ),
-                    ],
-                },
+                bundling=lambda_bundling("register"),
             ),
             environment={
                 "POWERTOOLS_SERVICE_NAME": "authentication",
@@ -118,19 +124,7 @@ class TerrastrideUsersStack(Stack):
             handler="lambda_handler.lambda_handler",
             code=_lambda.Code.from_asset(
                 ".",
-                bundling={
-                    "image": _lambda.Runtime.PYTHON_3_12.bundling_image,  # pylint: disable=no-member
-                    "command": [
-                        "bash",
-                        "-c",
-                        (
-                            "cd login && "
-                            "pip install aws-lambda-powertools fastjsonschema -t /asset-output && "
-                            "cp -r . /asset-output && "
-                            "cp ../middleware.py /asset-output"
-                        ),
-                    ],
-                },
+                bundling=lambda_bundling("login"),
             ),
             environment={
                 "POWERTOOLS_SERVICE_NAME": "authentication",
@@ -149,19 +143,7 @@ class TerrastrideUsersStack(Stack):
             handler="lambda_handler.lambda_handler",
             code=_lambda.Code.from_asset(
                 ".",
-                bundling={
-                    "image": _lambda.Runtime.PYTHON_3_12.bundling_image,  # pylint: disable=no-member
-                    "command": [
-                        "bash",
-                        "-c",
-                        (
-                            "cd getuserinfo && "
-                            "pip install aws-lambda-powertools fastjsonschema -t /asset-output && "
-                            "cp -r . /asset-output && "
-                            "cp ../middleware.py /asset-output"
-                        ),
-                    ],
-                },
+                bundling=lambda_bundling("getuserinfo"),
             ),
             environment={
                 "POWERTOOLS_SERVICE_NAME": "authentication",
@@ -178,19 +160,7 @@ class TerrastrideUsersStack(Stack):
             handler="lambda_handler.lambda_handler",
             code=_lambda.Code.from_asset(
                 ".",
-                bundling={
-                    "image": _lambda.Runtime.PYTHON_3_12.bundling_image,  # pylint: disable=no-member
-                    "command": [
-                        "bash",
-                        "-c",
-                        (
-                            "cd resendverification && "
-                            "pip install aws-lambda-powertools fastjsonschema -t /asset-output && "
-                            "cp -r . /asset-output && "
-                            "cp ../middleware.py /asset-output"
-                        ),
-                    ],
-                },
+                bundling=lambda_bundling("resendverification"),
             ),
             environment={
                 "POWERTOOLS_SERVICE_NAME": "authentication",
@@ -208,19 +178,7 @@ class TerrastrideUsersStack(Stack):
             handler="lambda_handler.lambda_handler",
             code=_lambda.Code.from_asset(
                 ".",
-                bundling={
-                    "image": _lambda.Runtime.PYTHON_3_12.bundling_image,  # pylint: disable=no-member
-                    "command": [
-                        "bash",
-                        "-c",
-                        (
-                            "cd sendverification && "
-                            "pip install aws-lambda-powertools fastjsonschema -t /asset-output && "
-                            "cp -r . /asset-output && "
-                            "cp ../middleware.py /asset-output"
-                        ),
-                    ],
-                },
+                bundling=lambda_bundling("sendverification"),
             ),
             environment={
                 "POWERTOOLS_SERVICE_NAME": "authentication",

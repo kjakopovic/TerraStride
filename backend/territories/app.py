@@ -18,6 +18,24 @@ from aws_cdk import (
 from constructs import Construct
 
 
+def lambda_bundling(directory: str):
+    """Helper function for Lambda bundling configuration."""
+
+    return {
+        "image": _lambda.Runtime.PYTHON_3_12.bundling_image,  # pylint: disable=no-member
+        "command": [
+            "bash",
+            "-c",
+            (
+                f"cd {directory} && "
+                "pip install aws-lambda-powertools fastjsonschema -t /asset-output && "
+                "cp -r . /asset-output && "
+                "cp ../middleware.py /asset-output"
+            ),
+        ],
+    }
+
+
 class TerrastrideTerritoriesStack(Stack):
     """AWS CDK Stack for Terrastride Territories Service"""
 
@@ -76,19 +94,7 @@ class TerrastrideTerritoriesStack(Stack):
             handler="lambda_handler.lambda_handler",
             code=_lambda.Code.from_asset(
                 ".",
-                bundling={
-                    "image": _lambda.Runtime.PYTHON_3_12.bundling_image,  # pylint: disable=no-member
-                    "command": [
-                        "bash",
-                        "-c",
-                        (
-                            "cd healthcheck && "
-                            "pip install aws-lambda-powertools fastjsonschema -t /asset-output && "
-                            "cp -r . /asset-output && "
-                            "cp ../middleware.py /asset-output"
-                        ),
-                    ],
-                },
+                bundling=lambda_bundling("healthcheck"),
             ),
             environment={
                 "POWERTOOLS_SERVICE_NAME": "territories",
@@ -104,19 +110,7 @@ class TerrastrideTerritoriesStack(Stack):
             handler="lambda_handler.lambda_handler",
             code=_lambda.Code.from_asset(
                 ".",
-                bundling={
-                    "image": _lambda.Runtime.PYTHON_3_12.bundling_image,  # pylint: disable=no-member
-                    "command": [
-                        "bash",
-                        "-c",
-                        (
-                            "cd listterritories && "
-                            "pip install aws-lambda-powertools fastjsonschema -t /asset-output && "
-                            "cp -r . /asset-output && "
-                            "cp ../middleware.py /asset-output"
-                        ),
-                    ],
-                },
+                bundling=lambda_bundling("listterritories"),
             ),
             environment={
                 "POWERTOOLS_SERVICE_NAME": "territories",
@@ -132,19 +126,7 @@ class TerrastrideTerritoriesStack(Stack):
             handler="lambda_handler.lambda_handler",
             code=_lambda.Code.from_asset(
                 ".",
-                bundling={
-                    "image": _lambda.Runtime.PYTHON_3_12.bundling_image,  # pylint: disable=no-member
-                    "command": [
-                        "bash",
-                        "-c",
-                        (
-                            "cd assignterritoriestouser && "
-                            "pip install aws-lambda-powertools fastjsonschema -t /asset-output && "
-                            "cp -r . /asset-output && "
-                            "cp ../middleware.py /asset-output"
-                        ),
-                    ],
-                },
+                bundling=lambda_bundling("assignterritoriestouser"),
             ),
             environment={
                 "POWERTOOLS_SERVICE_NAME": "territories",
@@ -161,19 +143,7 @@ class TerrastrideTerritoriesStack(Stack):
             handler="lambda_handler.lambda_handler",
             code=_lambda.Code.from_asset(
                 ".",
-                bundling={
-                    "image": _lambda.Runtime.PYTHON_3_12.bundling_image,  # pylint: disable=no-member
-                    "command": [
-                        "bash",
-                        "-c",
-                        (
-                            "cd mineterritorycoins && "
-                            "pip install aws-lambda-powertools fastjsonschema -t /asset-output && "
-                            "cp -r . /asset-output && "
-                            "cp ../middleware.py /asset-output"
-                        ),
-                    ],
-                },
+                bundling=lambda_bundling("mineterritorycoins"),
             ),
             environment={
                 "POWERTOOLS_SERVICE_NAME": "territories",
