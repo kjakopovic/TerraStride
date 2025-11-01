@@ -348,7 +348,7 @@ class TerrastrideEventsStack(Stack):
                         "bash",
                         "-c",
                         (
-                            "cd getuseractivetickets && "
+                            "cd getusersactivetickets && "
                             "pip install aws-lambda-powertools fastjsonschema -t /asset-output && "
                             "cp -r . /asset-output && "
                             "cp ../middleware.py /asset-output"
