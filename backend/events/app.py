@@ -310,8 +310,10 @@ class TerrastrideEventsStack(Stack):
         # GET /events/healthcheck → check is service active and healthy
         api.root.add_resource("healthcheck").add_method("GET", healthcheck_integration)
 
-        # POST /events/attend → attend event
-        api.root.add_resource("attend").add_method("POST", buy_event_ticket_integration)
+        # POST /events/ticket/buy → buy event ticket
+        api.root.add_resource("ticket").add_resource("buy").add_method(
+            "POST", buy_event_ticket_integration
+        )
 
         # GET /events → list all events
         api.root.add_method("GET", list_events_integration)
