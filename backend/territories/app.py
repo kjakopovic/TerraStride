@@ -157,6 +157,7 @@ class TerrastrideTerritoriesStack(Stack):
         # Grant Lambda read access to the DB secret
         territories_table.grant_read_write_data(list_territories_lambda)
         territories_table.grant_read_write_data(assign_territories_lambda)
+
         list_territories_lambda.add_to_role_policy(cognito_policy)
         assign_territories_lambda.add_to_role_policy(cognito_policy)
 

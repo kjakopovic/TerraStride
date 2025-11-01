@@ -260,6 +260,7 @@ class TerrastrideUsersStack(Stack):
         api.root.add_resource("register").add_method("POST", register_integration)
         api.root.add_resource("login").add_method("POST", login_integration)
         api.root.add_resource("me").add_method("GET", get_user_info_integration)
+
         verification = api.root.add_resource("verification")
         verification.add_resource("resend").add_method(
             "POST", resend_verification_integration
