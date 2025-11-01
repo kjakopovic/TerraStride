@@ -72,12 +72,19 @@ export const useTerritories = (coords: LatLng | null) => {
       position: LatLng | null
     ) => {
       if (!usersApiBaseUrl) {
-        if (shouldUpdate()) setError("Missing user API base URL.");
+        if (shouldUpdate()) {
+          setError("Missing territories API base URL.");
+          setLoading(false);
+        }
         return;
       }
 
       if (!position) {
-        if (shouldUpdate()) setTerritories([]);
+        if (shouldUpdate()) {
+          lastQueryRef.current = null;
+          setTerritories([]);
+          setLoading(false);
+        }
         return;
       }
 
@@ -122,7 +129,8 @@ export const useTerritories = (coords: LatLng | null) => {
           console.warn("Failed to fetch territories", err);
         }
       } finally {
-        if (shouldUpdate()) setLoading(false);
+        setLoading(false);
+        console.log("Finished fetching territories");
       }
     },
     [getTokens, usersApiBaseUrl]

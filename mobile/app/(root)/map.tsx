@@ -269,12 +269,15 @@ const Map = () => {
     }
   }, []);
 
-  if (
-    locationState.loading ||
-    !mapReady ||
-    (currentView === "territory" && territoriesLoading) ||
-    (currentView === "events" && eventsLoading)
-  ) {
+  const territoryReady = currentView !== "territory" || !territoriesLoading;
+
+  const eventsReady =
+    currentView !== "events" || !eventsLoading || events.length > 0;
+
+  const showBlockingSpinner =
+    locationState.loading || !mapReady || (!territoryReady && !eventsReady);
+
+  if (showBlockingSpinner) {
     return (
       <SafeAreaView style={{ flex: 1, justifyContent: "center" }}>
         <ActivityIndicator size="large" color={colors.primary} />
@@ -373,6 +376,23 @@ const Map = () => {
             );
           })}
       </MapView>
+
+      {(currentView === "territory" &&
+        territoriesLoading &&
+        !territories.length) ||
+      (currentView === "events" && eventsLoading && !events.length) ? (
+        <View
+          style={{
+            position: "absolute",
+            top: "50%",
+            left: 0,
+            right: 0,
+            alignItems: "center",
+          }}
+        >
+          <ActivityIndicator size="large" color={colors.primary} />
+        </View>
+      ) : null}
 
       <MapSearchBar
         searchQuery={searchQuery}
