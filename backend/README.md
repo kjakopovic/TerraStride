@@ -4,7 +4,6 @@
 
 ### LOGIC
 
-- we need to add mining logic (possible cron job) - mine tokens, not coins, I will handle both to be in users table
 - cron job for events finishment, every day at 22h (if event starts after, then it waits for the next day)
 - web3 implementation for adding coins in game
 - we need to add strava runs fetching for territory collection

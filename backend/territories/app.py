@@ -213,10 +213,15 @@ class TerrastrideTerritoriesStack(Stack):
         assign_territories_integration = apigw.LambdaIntegration(
             assign_territories_lambda
         )
+        mine_territory_coins_integration = apigw.LambdaIntegration(
+            mine_territory_coins_lambda
+        )
 
         # API Gateway Resources and Methods
         api.root.add_resource("healthcheck").add_method("GET", healthcheck_integration)
-        api.root.add_resource("mine").add_method("POST", mine_territory_coins_lambda)
+        api.root.add_resource("mine").add_method(
+            "POST", mine_territory_coins_integration
+        )
         api.root.add_method("GET", list_territories_integration)
         api.root.add_method("POST", assign_territories_integration)
 
