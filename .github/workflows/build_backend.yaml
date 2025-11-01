@@ -193,6 +193,10 @@ jobs:
         run: pip install boto3 aws-cdk-lib constructs dotenv
         shell: bash
 
+      - name: Install Node.js dependencies
+        working-directory: ${{ env.BACKEND_PATH }}/crypto
+        run: npm install
+
       - name: Install AWS CDK CLI
         run: npm install -g aws-cdk
 
