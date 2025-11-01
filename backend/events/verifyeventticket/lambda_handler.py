@@ -87,9 +87,6 @@ def lambda_handler(event, context):
     if not is_event_active(event):
         return http_response(400, {"status": "error", "message": "Event is not active"})
 
-    # Mark ticket as used
-    mark_ticket_as_used(event_ticket_id)
-
     return http_response(
         200,
         {
@@ -164,13 +161,3 @@ def is_ticket_used(ticket):
     """Check if the ticket has already been used."""
 
     return ticket.get("is_used", False)
-
-
-def mark_ticket_as_used(event_ticket_id):
-    """Mark the event ticket as used in DynamoDB."""
-
-    tickets_table.update_item(
-        Key={"id": event_ticket_id},
-        UpdateExpression="SET is_used = :val",
-        ExpressionAttributeValues={":val": True},
-    )

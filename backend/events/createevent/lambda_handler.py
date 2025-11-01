@@ -86,6 +86,7 @@ def lambda_handler(event, context):
         "entry_fee": entry_fee,
         "created_at": created_at,
         "user_id": user_id,
+        "runs": [],
         "checkpoints": normalize_list(checkpoints),
         "trace": normalize_list(trace_points),
     }
