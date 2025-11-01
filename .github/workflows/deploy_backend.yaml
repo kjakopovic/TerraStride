@@ -167,10 +167,19 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
+      - name: Set up Python
+        uses: actions/setup-python@v3
+        with:
+          python-version: "3.12"
+
       - name: Set up Node.js
         uses: actions/setup-node@v3
         with:
           node-version: "24"
+
+      - name: Install Python packages
+        run: pip install boto3 aws-cdk-lib constructs dotenv
+        shell: bash
 
       - name: Install AWS CDK CLI
         run: npm install -g aws-cdk
