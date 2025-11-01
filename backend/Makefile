@@ -28,7 +28,7 @@ build:
 # --- Deploy
 deploy:
 	@if [ -z "$(SERVICE)" ]; then echo "❌ Please provide SERVICE=<name>"; exit 1; fi
-	cd ./$(SERVICE) && cdk deploy --region $(AWS_REGION)
+	cd ./$(SERVICE) && cdk deploy --region $(AWS_REGION) --require-approval never
 
 # --- Destroy
 destroy:
