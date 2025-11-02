@@ -191,6 +191,10 @@ jobs:
           aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws_region: ${{ env.awsRegion }}
 
+      - name: Install Node.js dependencies
+        working-directory: ${{ env.BACKEND_PATH }}
+        run: cd ./crypto && npm install
+
       - name: Setup cdk json file
         working-directory: ${{ env.BACKEND_PATH }}
         run: make generate-crypto-cdk
