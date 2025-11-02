@@ -39,6 +39,10 @@ generate-cdk:
 	@if [ -z "$(SERVICE)" ]; then echo "❌ Please provide SERVICE=<name>"; exit 1; fi
 	cd ./scripts && python3 generate_cdk_json.py -e ../.env -o ../$(SERVICE)/cdk.json -k awsRegion userPoolId
 
+generate-cdk-typescript:
+	@if [ -z "$(SERVICE)" ]; then echo "❌ Please provide SERVICE=<name>"; exit 1; fi
+	cd ./scripts && python3 generate_cdk_json.py -e ../.env -o ../$(SERVICE)/cdk.json -k awsRegion userPoolId --typescript
+
 # ---------------------------
 # 💡 Shortcuts
 # ---------------------------
@@ -61,6 +65,12 @@ build-events:build
 deploy-events:SERVICE=events
 deploy-events:deploy
 
+build-crypto:SERVICE=crypto
+build-crypto:build
+
+deploy-crypto:SERVICE=crypto
+deploy-crypto:deploy
+
 # ---------------------------
 # 💡 Scripts
 # ---------------------------
@@ -73,3 +83,6 @@ generate-users-cdk: generate-cdk
 
 generate-events-cdk: SERVICE=events
 generate-events-cdk: generate-cdk
+
+generate-crypto-cdk: SERVICE=crypto
+generate-crypto-cdk: generate-cdk-typescript
