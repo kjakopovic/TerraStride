@@ -19,6 +19,7 @@ import {
 } from "@/utils/gridUtils";
 import { RaceEvent, buildEventPath } from "@/utils/eventsUtils";
 import { EventRoute, fetchEventRoute } from "@/utils/directionsUtils";
+import { fetchEventDistance } from "@/utils/distanceUtils";
 import { useRouter } from "expo-router";
 import { useLocationTracking } from "@/hooks/useLocationTracking";
 import { useEvents } from "@/hooks/useEvents";
@@ -49,6 +50,8 @@ const hexToRgba = (hexColor: string, alpha = 0.3) => {
 const Map = () => {
   const { colors } = useTheme();
   const directionsApiKey = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY ?? "";
+  const distanceApiKey = process.env
+    .EXPO_PUBLIC_GOOGLE_DISTANCE_API_KEY as string;
   const router = useRouter();
   const mapRef = useRef<MapView | null>(null);
   const lastEventsQueryRef = useRef<string | null>(null);
@@ -141,6 +144,7 @@ const Map = () => {
 
   const handleEventCreated = async (draft: EventBuilderResult) => {
     let route: EventRoute | undefined;
+    let distance: number | undefined;
 
     const baseEvent = {
       id: draft.id,
@@ -156,11 +160,18 @@ const Map = () => {
     if (directionsApiKey) {
       try {
         route = await fetchEventRoute(baseEvent, directionsApiKey);
+        const distanceInfo = await fetchEventDistance(
+          baseEvent,
+          directionsApiKey
+        );
+        distance = distanceInfo?.distance
+          ? distanceInfo.distance / 1000
+          : undefined;
         setRoutingError(null);
       } catch (error) {
-        console.warn("Failed to fetch Google Directions", error);
+        console.warn("Failed to fetch Google Directions or Distance", error);
         setRoutingError(
-          "Saved event with fallback path (Directions unavailable)."
+          "Saved event with fallback path (Directions/Distance unavailable)."
         );
       }
     } else {
@@ -186,6 +197,7 @@ const Map = () => {
       entry_fee: draft.entryFee,
       date: draft.raceDate,
       startTime: draft.raceTime,
+      km_long: distance,
       checkpoints: draft.checkpoints.map((checkpoint) => ({
         address: checkpoint.title ?? "Checkpoint",
         lat: checkpoint.latitude,

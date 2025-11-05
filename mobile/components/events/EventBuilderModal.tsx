@@ -623,6 +623,7 @@ const EventBuilderModal: React.FC<EventBuilderModalProps> = ({
                       ? orderedCheckpoints[0]!.id
                       : orderedCheckpoints[orderedCheckpoints.length - 1]!.id,
                     checkpoints: orderedCheckpoints,
+                    distance: 0, // Will be calculated in the next step
                   };
 
                   onConfirm(result);

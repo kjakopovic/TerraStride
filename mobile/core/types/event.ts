@@ -12,6 +12,7 @@ export type EventBuilderResult = {
   startCheckpointId: string;
   endCheckpointId: string;
   checkpoints: RaceCheckpoint[];
+  distance: number;
 };
 
 export type EventCheckpointPayload = {
@@ -36,6 +37,7 @@ export type EventApiRecord = {
   startTime: string;
   checkpoints: EventCheckpointPayload[];
   trace: EventTracePoint[];
+  distance?: number;
 };
 
 export type CreateEventPayload = {
@@ -44,8 +46,13 @@ export type CreateEventPayload = {
   entry_fee: number;
   date: string;
   startTime: string;
-  checkpoints: EventCheckpointPayload[];
-  trace: EventTracePoint[];
+  checkpoints: {
+    lng: number;
+    is_start: boolean;
+    is_end: boolean;
+  }[];
+  trace: { lat: number; lng: number }[];
+  km_long?: number;
 };
 
 export type CreateEventResponse = {
