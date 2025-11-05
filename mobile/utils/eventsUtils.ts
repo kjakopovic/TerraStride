@@ -15,9 +15,11 @@ export type RaceEvent = {
   endCheckpointId: string;
   raceDate?: string;
   raceTime?: string;
-  city?: string;
-  entryFee?: number;
+  city: string;
+  entryFee: number;
   route?: EventRoute;
+  distance?: number;
+  isDistributed: boolean;
 };
 
 export const buildEventPath = (event: RaceEvent): LatLng[] => {

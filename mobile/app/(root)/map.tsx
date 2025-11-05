@@ -5,7 +5,7 @@ import React, {
   useRef,
   useState,
 } from "react";
-import { ActivityIndicator, Text, View } from "react-native";
+import { ActivityIndicator, Alert, Text, View } from "react-native";
 import MapView, { Marker, Polygon, Polyline, Region } from "react-native-maps";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useTheme } from "@/core/theme";
@@ -68,6 +68,7 @@ const Map = () => {
     getEvents,
     loading: eventsLoading,
     error: eventsError,
+    purchaseTicket,
   } = useEvents();
   const [eventRoutes, setEventRoutes] = useState<Record<string, EventRoute>>(
     {}
@@ -141,6 +142,26 @@ const Map = () => {
       console.warn("Failed to fetch events", error);
     });
   }, [currentView, currentPosition, getEvents]);
+
+  const handlePurchaseTicket = async (event: RaceEvent | null) => {
+    if (!event) return;
+
+    try {
+      await purchaseTicket(event.id);
+      Alert.alert(
+        "Success",
+        `You have successfully purchased a ticket for ${event.name}.`
+      );
+      setDetailsVisible(false);
+      setSelectedEvent(null);
+    } catch (error: any) {
+      const message =
+        error?.payload?.message ??
+        error?.message ??
+        "Failed to purchase ticket. Please try again.";
+      Alert.alert("Error", message);
+    }
+  };
 
   const handleEventCreated = async (draft: EventBuilderResult) => {
     let route: EventRoute | undefined;
@@ -443,6 +464,8 @@ const Map = () => {
           setDetailsVisible(false);
           setSelectedEvent(null);
         }}
+        isPurchaseAvailable={selectedEvent?.isDistributed || false}
+        onPurchaseTicket={() => handlePurchaseTicket(selectedEvent)}
       />
 
       <EventBuilderModal

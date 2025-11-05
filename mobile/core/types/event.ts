@@ -32,12 +32,18 @@ export type EventApiRecord = {
   id: string;
   name: string;
   city: string;
-  entry_fee: number;
-  date: string;
-  startTime: string;
+  entry_fee: number | string;
   checkpoints: EventCheckpointPayload[];
   trace: EventTracePoint[];
-  distance?: number;
+  km_long?: number | string;
+  // Optional fields for backward compatibility
+  date?: string;
+  startTime?: string;
+  // New optional fields from the updated API
+  startdate?: string;
+  enddate?: string;
+  created_at?: string;
+  is_distributed?: string | number;
 };
 
 export type CreateEventPayload = {

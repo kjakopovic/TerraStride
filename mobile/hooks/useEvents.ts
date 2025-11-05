@@ -58,6 +58,22 @@ const toRaceEvent = (record: EventApiRecord): RaceEvent | null => {
         }
       : undefined;
 
+  // Handle new and old date/time formats
+  let raceDate: string | undefined;
+  let raceTime: string | undefined;
+
+  if (record.startdate) {
+    const dateObj = new Date(record.startdate);
+    raceDate = dateObj.toISOString().split("T")[0];
+    raceTime = dateObj.toISOString().split("T")[1].slice(0, 5);
+  } else {
+    raceDate = record.date;
+    raceTime = record.startTime;
+  }
+
+  const isDistributed =
+    record.is_distributed === "1" || record.is_distributed === 1;
+
   return {
     id: record.id,
     name: record.name,
@@ -65,11 +81,13 @@ const toRaceEvent = (record: EventApiRecord): RaceEvent | null => {
     isCircuit: startCheckpointId === endCheckpointId,
     startCheckpointId,
     endCheckpointId,
-    raceDate: record.date,
-    raceTime: record.startTime,
+    raceDate,
+    raceTime,
     city: record.city,
-    entryFee: record.entry_fee,
+    entryFee: parse(record.entry_fee),
     route,
+    distance: record.km_long ? parse(record.km_long) : undefined,
+    isDistributed,
   };
 };
 
@@ -116,6 +134,7 @@ export const useEvents = () => {
           .filter((event): event is RaceEvent => event !== null);
 
         setEvents(mapped);
+        console.log("Fetched events:", mapped);
         setError(null);
         return mapped;
       } catch (err: any) {
@@ -148,5 +167,28 @@ export const useEvents = () => {
     [apiClient]
   );
 
-  return { events, setEvents, createEvent, getEvents, refresh, loading, error };
+  const purchaseTicket = useCallback(
+    async (eventId: string) => {
+      if (!apiClient) {
+        throw new Error("Missing events API base URL.");
+      }
+
+      // Assuming the API expects a JSON body with the event ID.
+      return apiClient.post("tickets/buy", {
+        body: { event_id: eventId },
+      });
+    },
+    [apiClient]
+  );
+
+  return {
+    events,
+    setEvents,
+    createEvent,
+    getEvents,
+    refresh,
+    loading,
+    error,
+    purchaseTicket,
+  };
 };
