@@ -1,10 +1,5 @@
 # Backend Setup
 
-## TODO:
-
-- web3 implementation for adding coins in game
-- we need to add strava runs fetching for territory collection
-
 ### LOGIC
 
 ### ENDPOINTS
