@@ -11,6 +11,7 @@ import boto3
 from boto3.dynamodb.conditions import Attr, Key
 from aws_lambda_powertools import Logger
 from aws_lambda_powertools.utilities.validation import validate
+import botocore
 
 # pylint: disable=import-error
 from middleware import middleware, http_response, cors_response, get_user_id, Territory
@@ -142,15 +143,28 @@ def upsert_territory_dynamodb(t: Territory):
     update_expr += ", created_at = if_not_exists(created_at, :created_at)"
     expr_attr_vals[":created_at"] = now_iso
 
-    territories_table.update_item(
-        Key={"square_key": square_key},
-        UpdateExpression=update_expr,
-        ExpressionAttributeValues=expr_attr_vals,
-        ConditionExpression=Attr("average_pace").gt(item_attrs["average_pace"])
-        | Attr("square_key").not_exists(),
-    )
+    try:
+        territories_table.update_item(
+            Key={"square_key": square_key},
+            UpdateExpression=update_expr,
+            ExpressionAttributeValues=expr_attr_vals,
+            ConditionExpression=Attr("average_pace").gt(item_attrs["average_pace"])
+            | Attr("square_key").not_exists(),
+        )
 
-    logger.debug(f"Upserted territory for user {t.user_id} ({square_key})")
+        logger.debug(f"Upserted territory for user {t.user_id} ({square_key})")
+    except botocore.exceptions.ClientError as e:
+        # If the conditional fails, it's a valid "no-op": someone with better/equal
+        # pace already owns it. Swallow it and just log at info/debug.
+        if e.response.get("Error", {}).get("Code") == "ConditionalCheckFailedException":
+            logger.info(
+                "Territory upsert skipped due to conditional check",
+                extra={"square_key": square_key, "user_id": t.user_id},
+            )
+            return
+
+        # For any other ClientError, re-raise to be handled by middleware
+        raise
 
 
 def get_user_territory_count(user_id: str) -> int:
