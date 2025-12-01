@@ -17,6 +17,7 @@ logger = Logger()
 AWS_REGION = os.environ.get("AWS_REGION", "eu-central-1")
 USER_POOL_ID = os.environ.get("USER_POOL_ID")
 TERRITORIES_TABLE = os.environ.get("TERRITORIES_TABLE")
+XP_MULTIPLIER = float(os.environ.get("XP_MULTIPLIER", "10"))
 
 # Clients
 dynamodb = boto3.resource("dynamodb", region_name=AWS_REGION)
@@ -56,6 +57,7 @@ def lambda_handler(event, context):
     elapsed_seconds = current_time - last_mined
 
     tokens_mined = calculate_mined_tokens(territory_count, elapsed_seconds)
+    new_xp = float(tokens_mined) * XP_MULTIPLIER
 
     logger.info(
         f"Calculated {tokens_mined} tokens mined for {territory_count} territories over {elapsed_seconds} seconds."
@@ -63,12 +65,10 @@ def lambda_handler(event, context):
 
     # Update Cognito attributes
     update_cognito_territories_info(
-        user_id, territory_count, tokens_mined, current_time
+        user_id, territory_count, tokens_mined, new_xp, current_time
     )
 
     logger.info(f"Updated Cognito count for user {user_id}: {territory_count}")
-
-    logger.info(f"User {user_id} has {territory_count} active territories.")
 
     return http_response(
         200,
@@ -94,16 +94,37 @@ def get_user_territory_count(user_id: str) -> int:
 
 
 def update_cognito_territories_info(
-    user_id: str, territory_count: int, tokens_mined: int, current_time: int
+    user_id: str,
+    territory_count: int,
+    tokens_mined: int,
+    new_xp: float,
+    current_time: int,
 ):
-    """Update custom attribute in Cognito."""
+    """Update custom attributes in Cognito by appending mined values."""
+
+    # Fetch current user to get existing balances
+    user = cognito_client.admin_get_user(
+        UserPoolId=USER_POOL_ID,
+        Username=user_id,
+    )
+
+    # Build a dict of current attributes
+    attrs = {a["Name"]: a["Value"] for a in user.get("UserAttributes", [])}
+
+    current_token_balance = float(attrs.get("custom:token_balance", "0"))
+    current_xp = float(attrs.get("custom:xp", "0"))
+
+    # Append new values
+    updated_token_balance = current_token_balance + float(tokens_mined)
+    updated_xp = current_xp + float(new_xp)
 
     cognito_client.admin_update_user_attributes(
         UserPoolId=USER_POOL_ID,
         Username=user_id,
         UserAttributes=[
             {"Name": "custom:territory_blocks", "Value": str(territory_count)},
-            {"Name": "custom:token_balance", "Value": str(tokens_mined)},
+            {"Name": "custom:token_balance", "Value": str(updated_token_balance)},
+            {"Name": "custom:xp", "Value": str(updated_xp)},
             {
                 "Name": "custom:last_mined",
                 "Value": str(current_time),
