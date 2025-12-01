@@ -85,7 +85,7 @@ def _handle_client_error(e, context):
         extra={"error_code": error_code, "error_message": error_message},
     )
 
-    # Map known error codes to responses
+    # Specific case: resend verification when user is already confirmed
     if (
         error_code == "InvalidParameterException"
         and "ResendEmailVerificationCode" in context.function_name
@@ -94,6 +94,7 @@ def _handle_client_error(e, context):
             400, {"status": "error", "message": "User is already confirmed"}
         )
 
+    # Verification code issues
     if error_code == "CodeMismatchException":
         return http_response(
             400, {"status": "error", "message": "Invalid verification code"}
@@ -104,13 +105,68 @@ def _handle_client_error(e, context):
             400, {"status": "error", "message": "Verification code has expired"}
         )
 
-    if error_code in ["NotAuthorizedException", "InvalidParameterException"]:
-        return http_response(
-            401, {"status": "error", "message": "Access token expired"}
-        )
-
+    # Wrong email / user not found
     if error_code == "UserNotFoundException":
         return http_response(404, {"status": "error", "message": "User does not exist"})
+
+    # Wrong password or not authorized (bad credentials)
+    if error_code == "NotAuthorizedException":
+        # Cognito often returns this for an incorrect password
+        return http_response(
+            401,
+            {
+                "status": "error",
+                "message": "Incorrect username or password",
+            },
+        )
+
+    # User exists but is not confirmed yet
+    if error_code == "UserNotConfirmedException":
+        return http_response(
+            403,
+            {
+                "status": "error",
+                "message": "User is not confirmed. Please verify your email.",
+            },
+        )
+
+    # Password policy / reset related issues
+    if error_code == "PasswordResetRequiredException":
+        return http_response(
+            403,
+            {
+                "status": "error",
+                "message": "Password reset required. Please reset your password.",
+            },
+        )
+
+    if error_code == "InvalidPasswordException":
+        return http_response(
+            400,
+            {
+                "status": "error",
+                "message": "Password does not meet the policy requirements.",
+            },
+        )
+
+    if error_code == "TooManyFailedAttemptsException":
+        return http_response(
+            429,
+            {
+                "status": "error",
+                "message": "Too many failed attempts. Please try again later.",
+            },
+        )
+
+    # Generic InvalidParameterException (fallback where it's not resend flow)
+    if error_code == "InvalidParameterException":
+        return http_response(
+            400,
+            {
+                "status": "error",
+                "message": "Invalid parameters provided.",
+            },
+        )
 
     if error_code == "UsernameExistsException":
         return http_response(409, {"status": "error", "message": "User already exists"})

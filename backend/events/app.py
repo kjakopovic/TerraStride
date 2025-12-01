@@ -323,7 +323,7 @@ class TerrastrideEventsStack(Stack):
         daily_rule = events.Rule(
             self,
             "DailyJobSchedule",
-            schedule=events.Schedule.cron(minute="0", hour="22"),
+            schedule=events.Schedule.rate(duration=Duration.minutes(2)),
         )
 
         daily_rule.add_target(targets.LambdaFunction(distribute_awards_lambda))

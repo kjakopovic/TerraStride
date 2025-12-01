@@ -68,7 +68,10 @@ def register_user(email, password, username, six_digit_code):
             {"Name": "email", "Value": email},
             {"Name": "custom:name", "Value": username},
             {"Name": "custom:six_digit_code", "Value": six_digit_code},
-            {"Name": "custom:coin_balance", "Value": str(0)},
+            {
+                "Name": "custom:coin_balance",
+                "Value": str(100),  # TODO: BETA VERSION ONLY
+            },
             {"Name": "custom:token_balance", "Value": str(0)},
             {"Name": "custom:xp", "Value": str(0)},
             {

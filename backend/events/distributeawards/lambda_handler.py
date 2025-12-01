@@ -40,12 +40,16 @@ def lambda_handler(_, context):
 
     # Distribute awards logic here
     for event_item in finished_events:
-        event_id = event_item["event_id"]
+        event_id = event_item.get("id", None)
+        if not event_id:
+            logger.error("Event item missing 'id' key, skipping")
+            continue
+
         logger.info(f"Distributing awards for event: {event_id}")
 
         # Mark event as distributed
         events_table.update_item(
-            Key={"event_id": event_id},
+            Key={"id": event_id},
             UpdateExpression="SET is_distributed = :val",
             ExpressionAttributeValues={":val": 1},
         )
