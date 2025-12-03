@@ -47,6 +47,19 @@ class TerrastrideTerritoriesStack(Stack):
             f"arn:aws:cognito-idp:{self.region}:{self.account}:userpool/{user_pool_id}"
         )
 
+        # Logs Database:
+        # PK: id (UUID as string)
+        frontend_logs_table = dynamodb.Table(
+            self,
+            "FrontendLogsTable",
+            partition_key=dynamodb.Attribute(
+                name="id", type=dynamodb.AttributeType.STRING
+            ),
+            sort_key=None,
+            billing_mode=dynamodb.BillingMode.PAY_PER_REQUEST,
+            removal_policy=RemovalPolicy.DESTROY,
+        )
+
         # Territories:
         # PK: id (UUID as string)
         # GSI: user_id-index -> partition user_id, sort created_at
@@ -85,6 +98,24 @@ class TerrastrideTerritoriesStack(Stack):
             ],
             resources=[user_pool_arn],
         )
+
+        # TODO: TEMPORARY FRONTEND LOGS TABLE
+        fe_logs_lambda = _lambda.Function(
+            self,
+            "FrontendLogsLambda",
+            runtime=_lambda.Runtime.PYTHON_3_12,
+            handler="lambda_handler.lambda_handler",
+            code=_lambda.Code.from_asset(
+                ".",
+                bundling=lambda_bundling("frontendlogs"),
+            ),
+            environment={
+                "POWERTOOLS_SERVICE_NAME": "territories",
+                "FRONTEND_LOGS_TABLE": frontend_logs_table.table_name,
+            },
+            timeout=Duration.seconds(30),
+        )
+        frontend_logs_table.grant_read_write_data(fe_logs_lambda)
 
         # Healthcheck Lambda Function
         healthcheck_lambda = _lambda.Function(
@@ -194,6 +225,11 @@ class TerrastrideTerritoriesStack(Stack):
         )
         api.root.add_method("GET", list_territories_integration)
         api.root.add_method("POST", assign_territories_integration)
+
+        # TODO: logs API resource
+        api.root.add_resource("logs").add_method(
+            "POST", apigw.LambdaIntegration(fe_logs_lambda)
+        )
 
         # Outputs
         CfnOutput(

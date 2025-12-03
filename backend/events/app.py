@@ -366,6 +366,9 @@ class TerrastrideEventsStack(Stack):
         # /events/tickets resource
         tickets_resource = api.root.add_resource("tickets")
 
+        # GET /events/tickets → get user's active tickets for event
+        tickets_resource.add_method("GET", get_user_tickets_integration)
+
         # POST /events/tickets/buy → buy event ticket
         tickets_resource.add_resource("buy").add_method(
             "POST", buy_event_ticket_integration
@@ -388,11 +391,6 @@ class TerrastrideEventsStack(Stack):
         # POST /events/{event_id}/finish → finish event race
         event_id_resource.add_resource("finish").add_method(
             "POST", finish_event_race_integration
-        )
-
-        # GET /events/{event_id}/tickets → get user's active tickets for event
-        event_id_resource.add_resource("tickets").add_method(
-            "GET", get_user_tickets_integration
         )
 
         # PUT /events/{event_id} → edit specific event
