@@ -54,11 +54,14 @@ const Map = () => {
   const directionsApiKey = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY ?? "";
   const router = useRouter();
   const mapRef = useRef<MapView | null>(null);
-  const lastEventsQueryRef = useRef<string | null>(null);
   const ticketsFetchedRef = useRef(false);
+  const eventsFetchedRef = useRef(false);
+  // Add a ref to track if initial position has been set to avoid stale closure issues
+  const initialPositionSetRef = useRef(false);
   const { getTokens } = useAuth();
 
   const [currentPosition, setCurrentPosition] = useState<LatLng | null>(null);
+  const [initialPosition, setInitialPosition] = useState<LatLng | null>(null);
   const [region, setRegion] = useState<Region | null>(null);
   const [currentSquare, setCurrentSquare] = useState<GridSquare | null>(null);
   const [neighborSquares, setNeighborSquares] = useState<GridSquare[]>([]);
@@ -86,11 +89,12 @@ const Map = () => {
   const [eventModalVisible, setEventModalVisible] = useState(false);
   const [routingError, setRoutingError] = useState<string | null>(null);
 
+  // Use initialPosition instead of currentPosition to prevent refetching on move
   const {
     territories,
     loading: territoriesLoading,
     error: territoriesError,
-  } = useTerritories(currentPosition);
+  } = useTerritories(initialPosition);
 
   const [currentView, setCurrentView] = useState<"territory" | "events">(
     "territory"
@@ -119,8 +123,16 @@ const Map = () => {
     }
   }, [selectedEvent?.raceDate, selectedEvent?.raceTime]);
 
-  const locationState = useLocationTracking((position) => {
+  // Wrap in useCallback to prevent location watcher from restarting on every render
+  const handleLocationUpdate = useCallback((position: LatLng) => {
     setCurrentPosition(position);
+
+    // Strictly ensure this only runs once using a ref
+    if (!initialPositionSetRef.current) {
+      initialPositionSetRef.current = true;
+      setInitialPosition(position);
+    }
+
     setRegion(createRegionFromPosition(position));
 
     const square = latLngToGridSquare(position.latitude, position.longitude);
@@ -139,7 +151,10 @@ const Map = () => {
     } else {
       setNeighborSquares([]);
     }
-  });
+  }, []); // Added empty dependency array
+
+  // Assign the result of useLocationTracking to locationState
+  const locationState = useLocationTracking(handleLocationUpdate);
 
   const mapReady = useMemo(() => !!region, [region]);
 
@@ -156,20 +171,17 @@ const Map = () => {
     });
   }, [events]);
 
+  // Fetch events once when position is first available
   useEffect(() => {
-    if (currentView !== "events" || !currentPosition) return;
+    if (eventsFetchedRef.current) return;
+    if (!initialPosition) return; // Changed from currentPosition to initialPosition
 
-    const queryKey = `${currentPosition.latitude.toFixed(
-      5
-    )}-${currentPosition.longitude.toFixed(5)}`;
-    if (queryKey === lastEventsQueryRef.current) return;
-
-    lastEventsQueryRef.current = queryKey;
-
-    getEvents(currentPosition).catch((error) => {
+    eventsFetchedRef.current = true;
+    getEvents(initialPosition).catch((error) => {
+      // Changed from currentPosition to initialPosition
       console.warn("Failed to fetch events", error);
     });
-  }, [currentView, currentPosition, getEvents]);
+  }, [initialPosition, getEvents]); // Changed dependency from currentPosition to initialPosition
 
   // Fetch tickets on mount
   useEffect(() => {
@@ -358,9 +370,6 @@ const Map = () => {
     if (currentPosition) {
       try {
         await refreshEvents(currentPosition);
-        lastEventsQueryRef.current = `${currentPosition.latitude.toFixed(
-          5
-        )}-${currentPosition.longitude.toFixed(5)}`;
       } catch (error) {
         console.warn("Failed to refresh events after creation", error);
       }
