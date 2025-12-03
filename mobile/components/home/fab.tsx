@@ -24,6 +24,10 @@ const FloatingActionBar: FC<FloatingActionBarProps> = ({
     router.push("/search");
   };
 
+  const handleRunPress = () => {
+    router.push("/territory-capture");
+  };
+
   return (
     <View
       style={{
@@ -56,7 +60,7 @@ const FloatingActionBar: FC<FloatingActionBarProps> = ({
             shadowRadius: 6,
             shadowOffset: { width: 0, height: 5 },
           }}
-          onPress={onRunPress}
+          onPress={handleRunPress}
         >
           <Image
             source={icons.figureRun}
