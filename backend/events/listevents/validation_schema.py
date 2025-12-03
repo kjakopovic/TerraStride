@@ -9,6 +9,9 @@ schema = {
             "type": "string",
             "pattern": r"^-?\d+\.\d+$",
         },
+        "show_upcoming_events": {
+            "type": "boolean",
+        },
         "search": {
             "type": "string",
         },

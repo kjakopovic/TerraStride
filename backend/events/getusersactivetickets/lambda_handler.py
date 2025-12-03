@@ -1,16 +1,14 @@
 """
-Lambda function to get users active event tickets.
+Lambda function to get users active events tickets.
 """
 
 import os
 import boto3
 from boto3.dynamodb.conditions import Key, Attr
 from aws_lambda_powertools import Logger
-from aws_lambda_powertools.utilities.validation import validate
 
 # pylint: disable=import-error
 from middleware import middleware, http_response, cors_response, get_user_id
-from validation_schema import path_params_schema
 
 # Logging
 logger = Logger()
@@ -38,10 +36,6 @@ def lambda_handler(event, context):
         return cors_resp
 
     headers = event.get("headers") or {}
-    path_params = event.get("pathParameters") or {}
-
-    # Validate schema
-    validate(event=path_params, schema=path_params_schema)
 
     # Verify user
     user_id = get_user_id(headers)
@@ -50,8 +44,7 @@ def lambda_handler(event, context):
             401, {"status": "error", "message": "Unauthorized - missing access token"}
         )
 
-    event_id = path_params.get("event_id")
-    user_tickets = get_users_tickets_for_event(user_id, event_id)
+    user_tickets = get_users_tickets_for_event(user_id)
 
     return http_response(
         200,
@@ -63,13 +56,13 @@ def lambda_handler(event, context):
     )
 
 
-def get_users_tickets_for_event(user_id, event_id):
-    """Retrieve all active tickets for a user for a specific event."""
+def get_users_tickets_for_event(user_id):
+    """Retrieve all active tickets for a user."""
 
     response = tickets_table.query(
         IndexName="user_id-index",
         KeyConditionExpression=Key("user_id").eq(user_id),
-        FilterExpression=Attr("event_id").eq(event_id) & Attr("is_used").ne(True),
+        FilterExpression=Attr("is_used").ne(True),
     )
 
     return response.get("Items", [])

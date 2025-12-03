@@ -94,10 +94,9 @@ def get_user_attributes(headers):
         if (
             attr["Name"] == "custom:territory_blocks"
             or attr["Name"] == "custom:coin_balance"
+            or attr["Name"] == "custom:xp"
+            or attr["Name"] == "custom:token_balance"
         ):
-            user_attributes[attr_name] = int(attr["Value"])
-
-        elif attr["Name"] == "custom:token_balance" or attr["Name"] == "custom:xp":
             user_attributes[attr_name] = float(attr["Value"])
 
         else:

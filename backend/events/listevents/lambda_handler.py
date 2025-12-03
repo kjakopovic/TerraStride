@@ -1,11 +1,11 @@
-"""
-Lambda function to list running events from DynamoDB.
+"""Lambda function to list running events from DynamoDB.
 Supports searching by name/city or filtering by geographic location.
 """
 
 import os
 import math
 from decimal import Decimal
+from datetime import datetime, timedelta, timezone
 import boto3
 from aws_lambda_powertools import Logger
 from aws_lambda_powertools.utilities.validation import validate
@@ -58,6 +58,7 @@ def lambda_handler(event, context):
     search = query_params.get("search")
     lat = query_params.get("lat")
     lng = query_params.get("lng")
+    show_upcoming_events = query_params.get("show_upcoming_events", False)
 
     events = []
     next_token = None
@@ -70,7 +71,7 @@ def lambda_handler(event, context):
     elif lat and lng:
         lat = float(lat)
         lng = float(lng)
-        events = fetch_events_within_bounds(lat, lng, limit)
+        events = fetch_events_within_bounds(lat, lng, limit, show_upcoming_events)
         total_count = len(events)
 
     else:
@@ -137,7 +138,7 @@ def search_events(search, limit, exclusive_start_key):
 # -----------------------------------------------
 # 📍 Geo-based filtering (100 km radius)
 # -----------------------------------------------
-def fetch_events_within_bounds(lat, lng, limit):
+def fetch_events_within_bounds(lat, lng, limit, show_upcoming_events):
     """
     Scan DynamoDB for events whose checkpoints fall within a 100 km bounding box.
     Uses a manual bounding-box check in Python since DynamoDB can't filter nested arrays.
@@ -160,9 +161,24 @@ def fetch_events_within_bounds(lat, lng, limit):
     min_lng = Decimal(str(min_lng))
     max_lng = Decimal(str(max_lng))
 
-    # Scan only for non-deleted events
+    # Build base filter for non-deleted events
+    filter_expr = Attr("deleted_at").not_exists()
+
+    # If requested, restrict to events starting after now and ending within next month
+    if show_upcoming_events:
+        now_iso = datetime.now(timezone.utc).isoformat()
+        one_month_later_iso = (
+            datetime.now(timezone.utc) + timedelta(days=30)
+        ).isoformat()
+
+        filter_expr = (
+            filter_expr
+            & Attr("startdate").gte(now_iso)
+            & Attr("enddate").lte(one_month_later_iso)
+        )
+
     scan_kwargs = {
-        "FilterExpression": Attr("deleted_at").not_exists(),
+        "FilterExpression": filter_expr,
     }
 
     response = events_table.scan(**scan_kwargs)
