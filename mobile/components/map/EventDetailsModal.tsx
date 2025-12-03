@@ -18,7 +18,9 @@ type Props = {
   visible: boolean;
   onClose: () => void;
   onPurchaseTicket: () => void;
+  onConsumeTicket?: () => void;
   isPurchaseAvailable: boolean;
+  hasTicket: boolean;
 };
 
 const EventDetailsModal: React.FC<Props> = ({
@@ -27,6 +29,8 @@ const EventDetailsModal: React.FC<Props> = ({
   onClose,
   onPurchaseTicket,
   isPurchaseAvailable,
+  hasTicket,
+  onConsumeTicket,
 }) => {
   const { colors, borderRadius } = useTheme();
 
@@ -127,8 +131,16 @@ const EventDetailsModal: React.FC<Props> = ({
               <Spacer size={8} />
               <CustomButton
                 disabled={!isPurchaseAvailable}
-                title={`Buy admission ticket (${event.entryFee ?? 2} USDC)`}
-                onPress={() => onPurchaseTicket()}
+                title={
+                  hasTicket
+                    ? "Consume Ticket"
+                    : `Buy admission ticket (${event.entryFee ?? 2} USDC)`
+                }
+                onPress={() =>
+                  hasTicket
+                    ? onConsumeTicket && onConsumeTicket()
+                    : onPurchaseTicket()
+                }
               />
             </ScrollView>
           )}

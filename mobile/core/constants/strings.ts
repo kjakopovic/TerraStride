@@ -68,10 +68,10 @@ export const STRINGS = {
     BALANCE_CARD: {
       TITLE: "My Balance",
       VIEW_WALLET: "View Wallet",
-      DAILY_GAIN_LABEL: "+12 $TERRA Today",
+      DAILY_GAIN_LABEL: "+12 Coins Today",
       STAT_LABEL: "Amount",
       TERRITORIES_TITLE: "Territories",
-      EVENT_EARNINGS_TITLE: "Event earnings",
+      TOKEN_COUNT_TITLE: "Token Count",
     },
     EVENTS: {
       TITLE: "Upcoming events",

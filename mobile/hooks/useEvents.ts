@@ -108,14 +108,16 @@ export const useEvents = () => {
   const lastQueryRef = useRef<string | null>(null);
 
   const getEvents = useCallback(
-    async (coords: LatLng, force = false) => {
+    async (coords: LatLng, options?: { force?: boolean; search?: string }) => {
       if (!apiClient) {
         throw new Error("Missing events API base URL.");
       }
 
+      const { force = false, search } = options ?? {};
+
       const queryKey = `${coords.latitude.toFixed(
         5
-      )}-${coords.longitude.toFixed(5)}`;
+      )}-${coords.longitude.toFixed(5)}-${search ?? ""}`;
 
       if (!force && queryKey === lastQueryRef.current) {
         return events;
@@ -125,8 +127,17 @@ export const useEvents = () => {
       setLoading(true);
 
       try {
+        const query: Record<string, number | string> = {
+          lat: coords.latitude,
+          lng: coords.longitude,
+        };
+
+        if (search?.trim()) {
+          query.search = search.trim();
+        }
+
         const response = await apiClient.get<EventsQueryResponse>("", {
-          query: { lat: coords.latitude, lng: coords.longitude },
+          query,
         });
 
         const mapped = response.events
@@ -150,32 +161,19 @@ export const useEvents = () => {
   );
 
   const refresh = useCallback(
-    (coords: LatLng) => getEvents(coords, true),
+    (coords: LatLng, search?: string) =>
+      getEvents(coords, { force: true, search }),
     [getEvents]
   );
 
   const createEvent = useCallback(
-    async (payload: CreateEventPayload) => {
+    (payload: CreateEventPayload) => {
       if (!apiClient) {
         throw new Error("Missing events API base URL.");
       }
 
       return apiClient.post<CreateEventResponse>("", {
         body: payload,
-      });
-    },
-    [apiClient]
-  );
-
-  const purchaseTicket = useCallback(
-    async (eventId: string) => {
-      if (!apiClient) {
-        throw new Error("Missing events API base URL.");
-      }
-
-      // Assuming the API expects a JSON body with the event ID.
-      return apiClient.post("tickets/buy", {
-        body: { event_id: eventId },
       });
     },
     [apiClient]
@@ -189,6 +187,5 @@ export const useEvents = () => {
     refresh,
     loading,
     error,
-    purchaseTicket,
   };
 };
