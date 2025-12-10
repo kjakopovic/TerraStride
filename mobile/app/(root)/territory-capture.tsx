@@ -432,7 +432,7 @@ const TerritoryCapture = () => {
       <View
         style={{
           position: "absolute",
-          top: insets.top + 16,
+          top: insets.top + 32,
           left: 16,
           right: 16,
           flexDirection: "row",
@@ -476,7 +476,7 @@ const TerritoryCapture = () => {
       <View
         style={{
           position: "absolute",
-          bottom: 32,
+          bottom: 64,
           left: 16,
           right: 16,
           flexDirection: "row",

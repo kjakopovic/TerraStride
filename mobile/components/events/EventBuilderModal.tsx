@@ -77,6 +77,7 @@ const EventBuilderModal: React.FC<EventBuilderModalProps> = ({
       setIsCircuit(false);
       setCheckpoints([]);
       setLabel("");
+      // Reset to default or initial region when closing/resetting
       setCoordinate({
         latitude: initialRegion?.latitude ?? DEFAULT_REGION.latitude,
         longitude: initialRegion?.longitude ?? DEFAULT_REGION.longitude,
@@ -93,7 +94,21 @@ const EventBuilderModal: React.FC<EventBuilderModalProps> = ({
       setCity("");
       setEntryFee("");
     }
-  }, [visible, initialRegion]);
+  }, [visible]);
+
+  // Add a separate effect to update coordinate when initialRegion changes
+  useEffect(() => {
+    if (initialRegion) {
+      setCoordinate({
+        latitude: initialRegion.latitude,
+        longitude: initialRegion.longitude,
+      });
+    }
+  }, [initialRegion]);
+
+  useEffect(() => {
+    console.log("EventBuilderModal: coordinate state updated", coordinate);
+  }, [coordinate]);
 
   const region = useMemo(
     () =>
@@ -415,15 +430,48 @@ const EventBuilderModal: React.FC<EventBuilderModalProps> = ({
                   <View
                     key={checkpoint.id}
                     style={{
-                      flexDirection: "row",
-                      alignItems: "center",
-                      justifyContent: "space-between",
+                      flexDirection: "column", // Changed to column to accommodate title
                       padding: 14,
                       borderRadius: borderRadius.medium,
                       backgroundColor: mutedBg,
+                      gap: 8,
                     }}
                   >
-                    <View style={{ gap: 6 }}>
+                    <View
+                      style={{
+                        flexDirection: "row",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                      }}
+                    >
+                      <Text
+                        style={{
+                          fontWeight: "600",
+                          color: colors.text,
+                          fontSize: 14,
+                        }}
+                      >
+                        {checkpoint.title}
+                      </Text>
+                      <TouchableOpacity
+                        onPress={() => removeCheckpoint(checkpoint.id)}
+                      >
+                        <Text
+                          style={{ color: colors.error, fontWeight: "600" }}
+                        >
+                          Remove
+                        </Text>
+                      </TouchableOpacity>
+                    </View>
+
+                    <View
+                      style={{
+                        flexDirection: "row",
+                        alignItems: "center",
+                        justifyContent: "flex-start",
+                        gap: 16,
+                      }}
+                    >
                       <TouchableOpacity
                         style={{
                           flexDirection: "row",
@@ -508,14 +556,6 @@ const EventBuilderModal: React.FC<EventBuilderModalProps> = ({
                         </TouchableOpacity>
                       )}
                     </View>
-
-                    <TouchableOpacity
-                      onPress={() => removeCheckpoint(checkpoint.id)}
-                    >
-                      <Text style={{ color: colors.error, fontWeight: "600" }}>
-                        Remove
-                      </Text>
-                    </TouchableOpacity>
                   </View>
                 ))}
 

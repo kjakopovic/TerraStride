@@ -22,6 +22,7 @@ import { LatLng } from "@/utils/gridUtils";
 import * as icons from "@/core/constants/icons";
 import { Pedometer } from "expo-sensors";
 import * as Location from "expo-location";
+import { log } from "@/utils/logger";
 
 // Constants
 const CHECKPOINT_RADIUS_METERS = 30;
@@ -287,7 +288,9 @@ const Run = () => {
       try {
         const { status } = await Location.requestForegroundPermissionsAsync();
         if (status !== "granted") {
-          setLocationError("Location permission denied");
+          const msg = "Location permission denied";
+          setLocationError(msg);
+          log("Run: Location permission denied");
           return;
         }
 
@@ -321,8 +324,9 @@ const Run = () => {
             }
           }
         );
-      } catch (error) {
+      } catch (error: any) {
         console.warn("Failed to start location tracking:", error);
+        log("Run: Failed to start location tracking", { error: error.message });
         if (isMounted) {
           setLocationError("Failed to get location");
         }
@@ -889,7 +893,7 @@ const Run = () => {
             borderTopLeftRadius: borderRadius.xlarge,
             borderTopRightRadius: borderRadius.xlarge,
             padding: 24,
-            paddingBottom: 40,
+            paddingBottom: 64,
             shadowColor: colors.text,
             shadowOpacity: 0.15,
             shadowRadius: 12,

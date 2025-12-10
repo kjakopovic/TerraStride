@@ -32,7 +32,7 @@ const FloatingActionBar: FC<FloatingActionBarProps> = ({
     <View
       style={{
         position: "absolute",
-        bottom: spacing.xlarge,
+        bottom: spacing.xlarge + 40,
         left: 0,
         right: 0,
         alignItems: "center",

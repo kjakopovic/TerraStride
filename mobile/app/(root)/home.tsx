@@ -1,6 +1,6 @@
 import * as icons from "@/core/constants/icons";
 import React, { useEffect, useMemo, useState } from "react";
-import { View, Text, ScrollView, Image } from "react-native";
+import { View, Text, ScrollView, Image, TouchableOpacity } from "react-native";
 import { LineChart } from "react-native-chart-kit";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useWindowDimensions } from "react-native";
@@ -76,7 +76,7 @@ const Home = () => {
     >
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 100 }}
+        contentContainerStyle={{ paddingBottom: 130 }}
       >
         <View
           style={{
@@ -85,13 +85,14 @@ const Home = () => {
             alignItems: "center",
             height: "100%",
             width: "100%",
-            paddingHorizontal: 20,
+            paddingHorizontal: spacing.medium,
             minHeight: height - 100,
           }}
         >
           <View
             style={{
               paddingVertical: 20,
+              paddingHorizontal: 10,
               alignItems: "center",
               justifyContent: "space-between",
               flexDirection: "row",
@@ -128,7 +129,9 @@ const Home = () => {
                 {(user?.name?.split("@")[0] || STRINGS.HOME.HEADER.GUEST) + "!"}
               </Text>
             </View>
-            <Image source={icons.cog} style={{ height: 24, width: 24 }} />
+            <TouchableOpacity>
+              <Image source={icons.cog} style={{ height: 24, width: 24 }} />
+            </TouchableOpacity>
           </View>
 
           {/* XP Bar */}
@@ -143,6 +146,7 @@ const Home = () => {
               shadowRadius: 4,
               shadowOpacity: 0.5,
               shadowOffset: { width: 0, height: 5 },
+              elevation: 15,
             }}
           >
             <View
@@ -203,6 +207,7 @@ const Home = () => {
               shadowRadius: 4,
               shadowOpacity: 0.5,
               shadowOffset: { width: 0, height: 5 },
+              elevation: 15,
             }}
           >
             <View
@@ -250,6 +255,7 @@ const Home = () => {
                     shadowRadius: 4,
                     shadowOpacity: 0.5,
                     shadowOffset: { width: 0, height: 5 },
+                    elevation: 15, // Add this for Android
                   }}
                 >
                   <Image
@@ -362,6 +368,7 @@ const Home = () => {
               marginTop: 20,
               shadowOpacity: 0.5,
               shadowOffset: { width: 0, height: 5 },
+              elevation: 15, // Add this for Android
             }}
           >
             <Text

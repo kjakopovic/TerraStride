@@ -20,7 +20,7 @@ import {
 import { RaceEvent, buildEventPath } from "@/utils/eventsUtils";
 import { EventRoute, fetchEventRoute } from "@/utils/directionsUtils";
 import { fetchEventDistance } from "@/utils/distanceUtils";
-import { useRouter } from "expo-router";
+import { useRouter, useLocalSearchParams } from "expo-router";
 import { useLocationTracking } from "@/hooks/useLocationTracking";
 import { useEvents } from "@/hooks/useEvents";
 import { useTickets } from "@/hooks/useTickets";
@@ -53,6 +53,7 @@ const Map = () => {
   const { colors } = useTheme();
   const directionsApiKey = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY ?? "";
   const router = useRouter();
+  const { eventId } = useLocalSearchParams<{ eventId: string }>(); // Get eventId from params
   const mapRef = useRef<MapView | null>(null);
   const ticketsFetchedRef = useRef(false);
   const eventsFetchedRef = useRef(false);
@@ -116,6 +117,11 @@ const Map = () => {
       const eventEndTime = new Date(
         eventDateTime.getTime() + 24 * 60 * 60 * 1000
       );
+      console.log("isEventActive check:");
+      console.log({ now, eventDateTime, eventEndTime });
+      console.log({
+        isActive: now >= eventDateTime && now <= eventEndTime,
+      });
 
       return now >= eventDateTime && now <= eventEndTime;
     } catch {
@@ -170,6 +176,38 @@ const Map = () => {
       return next;
     });
   }, [events]);
+
+  // Handle deep linking to specific event from search
+  useEffect(() => {
+    if (eventId && events.length > 0) {
+      const targetEvent = events.find((e) => e.id === eventId);
+      if (targetEvent) {
+        // Switch to events view
+        setCurrentView("events");
+
+        // Select the event and show details
+        setSelectedEvent(targetEvent);
+        setDetailsVisible(true);
+
+        // Center map on start checkpoint
+        const startCheckpoint = targetEvent.checkpoints[0];
+        if (startCheckpoint && mapRef.current) {
+          // Small delay to ensure map is ready
+          setTimeout(() => {
+            mapRef.current?.animateToRegion(
+              {
+                latitude: startCheckpoint.latitude,
+                longitude: startCheckpoint.longitude,
+                latitudeDelta: 0.01,
+                longitudeDelta: 0.01,
+              },
+              1000
+            );
+          }, 500);
+        }
+      }
+    }
+  }, [eventId, events]);
 
   // Fetch events once when position is first available
   useEffect(() => {
@@ -246,14 +284,6 @@ const Map = () => {
 
   const handlePurchaseTicket = async (event: RaceEvent | null) => {
     if (!event) return;
-
-    if (!event.isDistributed) {
-      Alert.alert(
-        "Tickets Unavailable",
-        "Tickets for this event are not yet available for purchase."
-      );
-      return;
-    }
 
     if (hasTicketForEvent(event.id)) {
       Alert.alert(
@@ -585,6 +615,7 @@ const Map = () => {
       />
 
       <EventBuilderModal
+        initialRegion={region ?? undefined}
         visible={eventModalVisible}
         onClose={() => setEventModalVisible(false)}
         onConfirm={handleEventCreated}

@@ -28,7 +28,7 @@ const MapFabMenu: React.FC<Props> = ({ open, toggle, onAction }) => {
     <View
       style={{
         position: "absolute",
-        bottom: 32,
+        bottom: 64,
         right: 24,
         alignItems: "flex-end",
         gap: 12,

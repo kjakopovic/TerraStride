@@ -8,6 +8,8 @@ import {
   ActivityIndicator,
   Image,
   Modal,
+  TouchableWithoutFeedback,
+  PanResponder,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useTheme } from "@/core/theme";
@@ -31,6 +33,18 @@ const Search = () => {
   const [locationError, setLocationError] = useState<string | null>(null);
 
   const lastFetchRef = useRef<string | null>(null);
+
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: (_, gestureState) => gestureState.dy > 5,
+      onPanResponderRelease: (_, gestureState) => {
+        if (gestureState.dy > 50) {
+          closeDetails();
+        }
+      },
+    })
+  ).current;
 
   // Get user location on mount
   useEffect(() => {
@@ -253,7 +267,11 @@ const Search = () => {
       {!isLoading && !error && !locationError && (
         <ScrollView
           style={{ flex: 1 }}
-          contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 100 }}
+          contentContainerStyle={{
+            paddingHorizontal: 16,
+            paddingBottom: 100,
+            paddingTop: 16,
+          }}
           showsVerticalScrollIndicator={false}
         >
           {events.length === 0 ? (
@@ -290,6 +308,7 @@ const Search = () => {
                   shadowOpacity: 0.15,
                   shadowRadius: 8,
                   shadowOffset: { width: 0, height: 4 },
+                  elevation: 5,
                 }}
                 onPress={() => handleEventSelect(event)}
               >
@@ -388,29 +407,52 @@ const Search = () => {
             backgroundColor: "rgba(0,0,0,0.5)",
           }}
         >
+          <TouchableWithoutFeedback onPress={closeDetails}>
+            <View
+              style={{
+                position: "absolute",
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+              }}
+            />
+          </TouchableWithoutFeedback>
+
           <View
             style={{
               backgroundColor: colors.background,
               borderTopLeftRadius: borderRadius.xlarge,
               borderTopRightRadius: borderRadius.xlarge,
               padding: 24,
-              maxHeight: "70%",
+              maxHeight: "75%",
             }}
           >
             {/* Handle */}
             <View
+              {...panResponder.panHandlers}
               style={{
-                width: 40,
-                height: 4,
-                backgroundColor: colors.text,
-                borderRadius: 2,
-                alignSelf: "center",
-                marginBottom: 20,
+                width: "100%",
+                alignItems: "center",
+                paddingBottom: 20,
+                backgroundColor: "transparent",
               }}
-            />
+            >
+              <View
+                style={{
+                  width: 40,
+                  height: 4,
+                  backgroundColor: colors.text,
+                  borderRadius: 2,
+                }}
+              />
+            </View>
 
             {selectedEvent && (
-              <ScrollView showsVerticalScrollIndicator={false}>
+              <ScrollView
+                showsVerticalScrollIndicator={false}
+                style={{ paddingBottom: 20 }}
+              >
                 {/* Event Name */}
                 <Text
                   style={{
@@ -449,7 +491,7 @@ const Search = () => {
                   {selectedEvent.raceDate && (
                     <View
                       style={{
-                        backgroundColor: colors.text,
+                        backgroundColor: colors.background,
                         paddingHorizontal: 16,
                         paddingVertical: 12,
                         borderRadius: borderRadius.large,
@@ -480,7 +522,7 @@ const Search = () => {
                   {selectedEvent.raceTime && (
                     <View
                       style={{
-                        backgroundColor: colors.text,
+                        backgroundColor: colors.background,
                         paddingHorizontal: 16,
                         paddingVertical: 12,
                         borderRadius: borderRadius.large,
@@ -511,7 +553,7 @@ const Search = () => {
                   {selectedEvent.distance && (
                     <View
                       style={{
-                        backgroundColor: colors.text,
+                        backgroundColor: colors.background,
                         paddingHorizontal: 16,
                         paddingVertical: 12,
                         borderRadius: borderRadius.large,
@@ -541,7 +583,7 @@ const Search = () => {
 
                   <View
                     style={{
-                      backgroundColor: colors.text,
+                      backgroundColor: colors.background,
                       paddingHorizontal: 16,
                       paddingVertical: 12,
                       borderRadius: borderRadius.large,
@@ -632,27 +674,57 @@ const Search = () => {
                   </View>
                 ))}
 
-                {/* Close Button */}
-                <TouchableOpacity
-                  style={{
-                    backgroundColor: colors.primary,
-                    paddingVertical: 16,
-                    borderRadius: borderRadius.large,
-                    alignItems: "center",
-                    marginTop: 24,
-                  }}
-                  onPress={closeDetails}
-                >
-                  <Text
+                {/* Action Buttons */}
+                <View style={{ gap: 12, marginTop: 24, marginBottom: 40 }}>
+                  <TouchableOpacity
                     style={{
-                      fontSize: 16,
-                      fontFamily: "LeagueSpartan-Bold",
-                      color: colors.background,
+                      backgroundColor: colors.primary,
+                      paddingVertical: 16,
+                      borderRadius: borderRadius.large,
+                      alignItems: "center",
+                    }}
+                    onPress={() => {
+                      closeDetails();
+                      // Navigate to map with event ID
+                      router.push({
+                        pathname: "/map",
+                        params: { eventId: selectedEvent.id },
+                      });
                     }}
                   >
-                    Close
-                  </Text>
-                </TouchableOpacity>
+                    <Text
+                      style={{
+                        fontSize: 16,
+                        fontFamily: "LeagueSpartan-Bold",
+                        color: colors.background,
+                      }}
+                    >
+                      View on Map
+                    </Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={{
+                      backgroundColor: colors.background,
+                      paddingVertical: 16,
+                      borderRadius: borderRadius.large,
+                      alignItems: "center",
+                      borderWidth: 1,
+                      borderColor: colors.primary,
+                    }}
+                    onPress={closeDetails}
+                  >
+                    <Text
+                      style={{
+                        fontSize: 16,
+                        fontFamily: "LeagueSpartan-Bold",
+                        color: colors.primary,
+                      }}
+                    >
+                      Close
+                    </Text>
+                  </TouchableOpacity>
+                </View>
               </ScrollView>
             )}
           </View>
