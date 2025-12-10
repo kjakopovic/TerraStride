@@ -1,0 +1,220 @@
+name: Build And Test Backend
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "backend/**"
+      - ".github/workflows/build_backend.yaml"
+
+env:
+  BACKEND_PATH: backend
+  awsRegion: "eu-central-1"
+  userPoolId: ${{ secrets.USER_POOL_ID }}
+
+jobs:
+  filter:
+    runs-on: ubuntu-latest
+    outputs:
+      users: ${{ steps.filter.outputs.users }}
+      territories: ${{ steps.filter.outputs.territories }}
+      events: ${{ steps.filter.outputs.events }}
+      crypto: ${{ steps.filter.outputs.crypto }}
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Filter folder changes
+        id: filter
+        uses: dorny/paths-filter@v2
+        with:
+          token: ${{ secrets.PAT_TOKEN }}
+          filters: |
+            users:
+              - 'backend/users/**'
+            territories:
+              - 'backend/territories/**'
+            events:
+              - 'backend/events/**'
+            crypto:
+              - 'backend/crypto/**'
+
+  test_users:
+    runs-on: ubuntu-latest
+    needs: filter
+    if: ${{ needs.filter.outputs.users == 'true' }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v3
+        with:
+          python-version: "3.12"
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: "24"
+
+      - name: Install Python packages
+        run: pip install boto3 aws-cdk-lib constructs dotenv
+        shell: bash
+
+      - name: Install AWS CDK CLI
+        run: npm install -g aws-cdk
+
+      - name: Set up AWS CLI
+        uses: ./.github/composite/aws_setup
+        with:
+          aws_access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws_region: ${{ env.awsRegion }}
+
+      - name: Setup cdk json file
+        working-directory: ${{ env.BACKEND_PATH }}
+        run: make generate-users-cdk
+
+      - name: Build Users Service
+        working-directory: ${{ env.BACKEND_PATH }}
+        run: make build-users
+
+      # - name: Run Tests
+      #   working-directory: ${{ env.BACKEND_PATH }}
+      #   run: python -m unittest discover -s tests -p "test*.py" -v
+
+  test_territories:
+    runs-on: ubuntu-latest
+    needs: filter
+    if: ${{ needs.filter.outputs.territories == 'true' }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v3
+        with:
+          python-version: "3.12"
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: "24"
+
+      - name: Install Python packages
+        run: pip install boto3 aws-cdk-lib constructs dotenv
+        shell: bash
+
+      - name: Install AWS CDK CLI
+        run: npm install -g aws-cdk
+
+      - name: Set up AWS CLI
+        uses: ./.github/composite/aws_setup
+        with:
+          aws_access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws_region: ${{ env.awsRegion }}
+
+      - name: Setup cdk json file
+        working-directory: ${{ env.BACKEND_PATH }}
+        run: make generate-territories-cdk
+
+      - name: Build Territories Service
+        working-directory: ${{ env.BACKEND_PATH }}
+        run: make build-territories
+
+      # - name: Run Tests
+      #   working-directory: ${{ env.BACKEND_PATH }}
+      #   run: python -m unittest discover -s tests -p "test*.py" -v
+
+  test_events:
+    runs-on: ubuntu-latest
+    needs: filter
+    if: ${{ needs.filter.outputs.events == 'true' }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v3
+        with:
+          python-version: "3.12"
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: "24"
+
+      - name: Install Python packages
+        run: pip install boto3 aws-cdk-lib constructs dotenv
+        shell: bash
+
+      - name: Install AWS CDK CLI
+        run: npm install -g aws-cdk
+
+      - name: Set up AWS CLI
+        uses: ./.github/composite/aws_setup
+        with:
+          aws_access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws_region: ${{ env.awsRegion }}
+
+      - name: Setup cdk json file
+        working-directory: ${{ env.BACKEND_PATH }}
+        run: make generate-events-cdk
+
+      - name: Build Events Service
+        working-directory: ${{ env.BACKEND_PATH }}
+        run: make build-events
+
+      # - name: Run Tests
+      #   working-directory: ${{ env.BACKEND_PATH }}
+      #   run: python -m unittest discover -s tests -p "test*.py" -v
+
+  test_crypto:
+    runs-on: ubuntu-latest
+    needs: filter
+    if: ${{ needs.filter.outputs.crypto == 'true' }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v3
+        with:
+          python-version: "3.12"
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: "24"
+
+      - name: Install Python packages
+        run: pip install boto3 aws-cdk-lib constructs dotenv
+        shell: bash
+
+      - name: Install AWS CDK CLI
+        run: npm install -g aws-cdk
+
+      - name: Set up AWS CLI
+        uses: ./.github/composite/aws_setup
+        with:
+          aws_access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws_region: ${{ env.awsRegion }}
+
+      - name: Install Node.js dependencies
+        working-directory: ${{ env.BACKEND_PATH }}
+        run: cd ./crypto && npm install
+
+      - name: Setup cdk json file
+        working-directory: ${{ env.BACKEND_PATH }}
+        run: make generate-crypto-cdk
+
+      - name: Build Crypto Service
+        working-directory: ${{ env.BACKEND_PATH }}
+        run: make build-crypto
+
+      # - name: Run Tests
+      #   working-directory: ${{ env.BACKEND_PATH }}
+      #   run: python -m unittest discover -s tests -p "test*.py" -v

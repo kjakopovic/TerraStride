@@ -139,7 +139,6 @@ const Register = () => {
               {STRINGS.AUTH.REGISTER.SIGN_IN}
             </Text>
           </Text>
-
           <Spacer size={spacing.small} />
         </View>
       </ScrollView>
