@@ -1,6 +1,6 @@
 import * as icons from "@/core/constants/icons";
-import React, { useMemo } from "react";
-import { View, Text, ScrollView, Image } from "react-native";
+import React, { useEffect, useMemo, useState } from "react";
+import { View, Text, ScrollView, Image, TouchableOpacity } from "react-native";
 import { LineChart } from "react-native-chart-kit";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useWindowDimensions } from "react-native";
@@ -14,16 +14,46 @@ import {
   createBalanceChartConfig,
 } from "@/utils/chartUtils";
 import { useRouter } from "expo-router";
+import { useAuth } from "@/hooks/useAuth";
+import {
+  createUserService,
+  calculateUserLevel,
+  UserLevel,
+} from "@/hooks/useUser";
+import { UserProfile } from "@/core/types/user";
 
 const Home = () => {
   const { height } = useWindowDimensions();
   const { colors, borderRadius, spacing } = useTheme();
-  const user = STRINGS.HOME.HEADER.DEFAULT_USER_NAME;
   const router = useRouter();
+  const [user, setUser] = useState<UserProfile | null>(null);
+  const [userLevel, setUserLevel] = useState<UserLevel | null>(null);
+  const { getTokens } = useAuth();
 
-  const handleMapPress = () => {
-    router.push("/map");
-  };
+  const userService = useMemo(() => createUserService(getTokens), [getTokens]);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const fetchData = async () => {
+      try {
+        const userData = await userService.getUser();
+        if (isMounted) {
+          setUser(userData.user);
+          setUserLevel(calculateUserLevel(userData.user.xp));
+          console.log("Fetched user data:", userData);
+        }
+      } catch (error) {
+        console.warn("Failed to fetch user data", error);
+      }
+    };
+
+    fetchData();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [userService]);
 
   const chartData = useMemo(
     () => createBalanceChartData(colors.primary),
@@ -35,9 +65,19 @@ const Home = () => {
     [colors.background, colors.primary]
   );
 
+  const handleMapPress = () => {
+    router.push("/map");
+  };
+
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
-      <ScrollView>
+    <SafeAreaView
+      style={{ flex: 1, backgroundColor: colors.background }}
+      edges={["top", "left", "right"]}
+    >
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: 130 }}
+      >
         <View
           style={{
             flex: 1,
@@ -45,13 +85,14 @@ const Home = () => {
             alignItems: "center",
             height: "100%",
             width: "100%",
-            paddingHorizontal: 20,
+            paddingHorizontal: spacing.medium,
             minHeight: height - 100,
           }}
         >
           <View
             style={{
               paddingVertical: 20,
+              paddingHorizontal: 10,
               alignItems: "center",
               justifyContent: "space-between",
               flexDirection: "row",
@@ -85,10 +126,75 @@ const Home = () => {
                   color: colors.text,
                 }}
               >
-                {(user || STRINGS.HOME.HEADER.GUEST) + "!"}
+                {(user?.name?.split("@")[0] || STRINGS.HOME.HEADER.GUEST) + "!"}
               </Text>
             </View>
-            <Image source={icons.cog} style={{ height: 24, width: 24 }} />
+            <TouchableOpacity>
+              <Image source={icons.cog} style={{ height: 24, width: 24 }} />
+            </TouchableOpacity>
+          </View>
+
+          {/* XP Bar */}
+          <View
+            style={{
+              width: "100%",
+              marginBottom: 20,
+              backgroundColor: colors.background,
+              borderRadius: borderRadius.large,
+              padding: 16,
+              shadowColor: colors.text40,
+              shadowRadius: 4,
+              shadowOpacity: 0.5,
+              shadowOffset: { width: 0, height: 5 },
+              elevation: 15,
+            }}
+          >
+            <View
+              style={{
+                flexDirection: "row",
+                justifyContent: "space-between",
+                alignItems: "center",
+                marginBottom: 8,
+              }}
+            >
+              <Text
+                style={{
+                  fontSize: 14,
+                  fontFamily: "LeagueSpartan-Bold",
+                  color: colors.primary,
+                }}
+              >
+                Level {userLevel?.level ?? 0}
+              </Text>
+              <Text
+                style={{
+                  fontSize: 12,
+                  fontFamily: "LeagueSpartan-Regular",
+                  color: colors.text40,
+                }}
+              >
+                {Math.floor(userLevel?.currentXp ?? 0)} /{" "}
+                {userLevel?.xpForNextLevel ?? 1000} XP
+              </Text>
+            </View>
+            <View
+              style={{
+                height: 10,
+                width: "100%",
+                backgroundColor: colors.text40,
+                borderRadius: borderRadius.full,
+                overflow: "hidden",
+              }}
+            >
+              <View
+                style={{
+                  height: "100%",
+                  width: `${(userLevel?.progress ?? 0) * 100}%`,
+                  backgroundColor: colors.primary,
+                  borderRadius: borderRadius.full,
+                }}
+              />
+            </View>
           </View>
 
           <View
@@ -101,6 +207,7 @@ const Home = () => {
               shadowRadius: 4,
               shadowOpacity: 0.5,
               shadowOffset: { width: 0, height: 5 },
+              elevation: 15,
             }}
           >
             <View
@@ -148,6 +255,7 @@ const Home = () => {
                     shadowRadius: 4,
                     shadowOpacity: 0.5,
                     shadowOffset: { width: 0, height: 5 },
+                    elevation: 15, // Add this for Android
                   }}
                 >
                   <Image
@@ -173,7 +281,7 @@ const Home = () => {
                     marginTop: 16,
                   }}
                 >
-                  $12,345.67
+                  ${user?.coin_balance.toFixed(2) || "0.00"}
                 </Text>
                 <View
                   style={{
@@ -240,13 +348,13 @@ const Home = () => {
               title={STRINGS.HOME.BALANCE_CARD.TERRITORIES_TITLE}
               icon={icons.map}
               stat={STRINGS.HOME.BALANCE_CARD.STAT_LABEL}
-              statValue="+12"
+              statValue={"+ " + (user?.territory_blocks.toString() || "0")}
             />
             <CardComponent
-              title={STRINGS.HOME.BALANCE_CARD.EVENT_EARNINGS_TITLE}
+              title={STRINGS.HOME.BALANCE_CARD.TOKEN_COUNT_TITLE}
               icon={icons.person}
               stat={STRINGS.HOME.BALANCE_CARD.STAT_LABEL}
-              statValue="$1,234.56"
+              statValue={"$" + (user?.token_balance?.toFixed(2) || "0.00")}
             />
           </View>
           <View
@@ -260,6 +368,7 @@ const Home = () => {
               marginTop: 20,
               shadowOpacity: 0.5,
               shadowOffset: { width: 0, height: 5 },
+              elevation: 15, // Add this for Android
             }}
           >
             <Text

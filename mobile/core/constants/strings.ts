@@ -27,6 +27,9 @@ export const STRINGS = {
       CTA: "Create Account",
       HAVE_ACCOUNT: "Already have an account?",
       SIGN_IN: "Log In",
+      USERNAME_MIN_LENGTH: "Username must be at least 3 characters",
+      EMAIL_VALIDATION: "Enter a valid email address",
+      PASSWORD_MIN_LENGTH: "Password must be at least 6 characters",
     },
     WALLET_PASSPHRASE: {
       TITLE: "Secure your wallet with a recovery passphrase",
@@ -43,8 +46,17 @@ export const STRINGS = {
       SUBTITLE: "Enter a code you’ll use to unlock TerraStride",
       CTA: "Set Code",
     },
-    COMMON: {
-      OR: "or",
+    EMAIL_VERIFICATION: {
+      TITLE: "Verify your email",
+      DESCRIPTION: "Enter the 6-digit code we sent to {email}.",
+      PLACEHOLDER: "123456",
+      CTA: "Verify",
+      CANCEL: "Cancel",
+      CODE_ERROR: "Enter the 6-digit code.",
+      REGISTER_FAIL: "We couldn’t complete registration. Try again.",
+      CODE_FAIL: "Verification failed. Check the code and try again.",
+      SUCCESS_TITLE: "Email verified",
+      SUCCESS_MESSAGE: "You can now log in with your new account.",
     },
   },
   HOME: {
@@ -56,10 +68,10 @@ export const STRINGS = {
     BALANCE_CARD: {
       TITLE: "My Balance",
       VIEW_WALLET: "View Wallet",
-      DAILY_GAIN_LABEL: "+12 $TERRA Today",
+      DAILY_GAIN_LABEL: "+12 Coins Today",
       STAT_LABEL: "Amount",
       TERRITORIES_TITLE: "Territories",
-      EVENT_EARNINGS_TITLE: "Event earnings",
+      TOKEN_COUNT_TITLE: "Token Count",
     },
     EVENTS: {
       TITLE: "Upcoming events",
@@ -84,5 +96,9 @@ export const STRINGS = {
         },
       ],
     },
+  },
+  COMMON: {
+    OR: "or",
+    OK: "OK",
   },
 } as const;

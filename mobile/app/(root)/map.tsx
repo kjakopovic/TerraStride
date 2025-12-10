@@ -5,7 +5,7 @@ import React, {
   useRef,
   useState,
 } from "react";
-import { ActivityIndicator, Text, View } from "react-native";
+import { ActivityIndicator, Alert, Text, View } from "react-native";
 import MapView, { Marker, Polygon, Polyline, Region } from "react-native-maps";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useTheme } from "@/core/theme";
@@ -13,46 +13,89 @@ import {
   GridSquare,
   LatLng,
   createRegionFromPosition,
+  gridIndicesToSquare,
   gridSquareToPolygon,
   latLngToGridSquare,
 } from "@/utils/gridUtils";
-import {
-  RaceEvent,
-  buildEventPath,
-  reorderCheckpointsForEvent,
-} from "@/utils/eventsUtils";
+import { RaceEvent, buildEventPath } from "@/utils/eventsUtils";
 import { EventRoute, fetchEventRoute } from "@/utils/directionsUtils";
-import { appendStoredEvent } from "@/utils/eventsStorage";
-import * as icons from "@/core/constants/icons";
-import { useRouter } from "expo-router";
+import { fetchEventDistance } from "@/utils/distanceUtils";
+import { useRouter, useLocalSearchParams } from "expo-router";
 import { useLocationTracking } from "@/hooks/useLocationTracking";
-import { useStoredEvents } from "@/hooks/useStoredEvents";
+import { useEvents } from "@/hooks/useEvents";
+import { useTickets } from "@/hooks/useTickets";
+import { useAuth } from "@/hooks/useAuth";
 import MapSearchBar from "@/components/map/SearchBar";
 import MapSearchResults from "@/components/map/SearchResults";
 import MapRoutingWarning from "@/components/map/RoutingWarning";
 import MapFabMenu from "@/components/map/FabMenu";
 import EventDetailsModal from "@/components/map/EventDetailsModal";
 import EventBuilderModal from "@/components/events/EventBuilderModal";
+import { useTerritories } from "@/hooks/useTerritories";
+import type {
+  CreateEventPayload,
+  EventBuilderResult,
+} from "@/core/types/event";
 
-const FAB_ACTIONS = [icons.layer, icons.trophy, icons.plus] as const;
+const hexToRgba = (hexColor: string, alpha = 0.3) => {
+  const normalized = hexColor.replace("#", "");
+  if (normalized.length !== 6) return hexColor;
+
+  const numeric = Number.parseInt(normalized, 16);
+  const r = (numeric >> 16) & 255;
+  const g = (numeric >> 8) & 255;
+  const b = numeric & 255;
+
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+};
 
 const Map = () => {
   const { colors } = useTheme();
   const directionsApiKey = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY ?? "";
   const router = useRouter();
+  const { eventId } = useLocalSearchParams<{ eventId: string }>(); // Get eventId from params
   const mapRef = useRef<MapView | null>(null);
+  const ticketsFetchedRef = useRef(false);
+  const eventsFetchedRef = useRef(false);
+  // Add a ref to track if initial position has been set to avoid stale closure issues
+  const initialPositionSetRef = useRef(false);
+  const { getTokens } = useAuth();
 
   const [currentPosition, setCurrentPosition] = useState<LatLng | null>(null);
+  const [initialPosition, setInitialPosition] = useState<LatLng | null>(null);
   const [region, setRegion] = useState<Region | null>(null);
-  const [claimedSquares, setClaimedSquares] = useState<GridSquare[]>([]);
-  const claimedIdsRef = useRef<Set<string>>(new Set());
+  const [currentSquare, setCurrentSquare] = useState<GridSquare | null>(null);
+  const [neighborSquares, setNeighborSquares] = useState<GridSquare[]>([]);
 
-  const { events, setEvents } = useStoredEvents();
+  const {
+    events,
+    createEvent,
+    refresh: refreshEvents,
+    getEvents,
+    loading: eventsLoading,
+    error: eventsError,
+  } = useEvents();
+
+  const {
+    purchaseTicket,
+    hasTicketForEvent,
+    fetchTickets,
+    consumeTicket,
+    getTicketForEvent,
+  } = useTickets(getTokens);
+
   const [eventRoutes, setEventRoutes] = useState<Record<string, EventRoute>>(
     {}
   );
   const [eventModalVisible, setEventModalVisible] = useState(false);
   const [routingError, setRoutingError] = useState<string | null>(null);
+
+  // Use initialPosition instead of currentPosition to prevent refetching on move
+  const {
+    territories,
+    loading: territoriesLoading,
+    error: territoriesError,
+  } = useTerritories(initialPosition);
 
   const [currentView, setCurrentView] = useState<"territory" | "events">(
     "territory"
@@ -63,16 +106,61 @@ const Map = () => {
   const [selectedEvent, setSelectedEvent] = useState<RaceEvent | null>(null);
   const [detailsVisible, setDetailsVisible] = useState(false);
 
-  const locationState = useLocationTracking((position) => {
+  const isEventActive = useMemo(() => {
+    if (!selectedEvent?.raceDate || !selectedEvent?.raceTime) return false;
+
+    try {
+      const eventDateTime = new Date(
+        `${selectedEvent.raceDate}T${selectedEvent.raceTime}:00`
+      );
+      const now = new Date();
+      const eventEndTime = new Date(
+        eventDateTime.getTime() + 24 * 60 * 60 * 1000
+      );
+      console.log("isEventActive check:");
+      console.log({ now, eventDateTime, eventEndTime });
+      console.log({
+        isActive: now >= eventDateTime && now <= eventEndTime,
+      });
+
+      return now >= eventDateTime && now <= eventEndTime;
+    } catch {
+      return false;
+    }
+  }, [selectedEvent?.raceDate, selectedEvent?.raceTime]);
+
+  // Wrap in useCallback to prevent location watcher from restarting on every render
+  const handleLocationUpdate = useCallback((position: LatLng) => {
     setCurrentPosition(position);
+
+    // Strictly ensure this only runs once using a ref
+    if (!initialPositionSetRef.current) {
+      initialPositionSetRef.current = true;
+      setInitialPosition(position);
+    }
+
     setRegion(createRegionFromPosition(position));
 
     const square = latLngToGridSquare(position.latitude, position.longitude);
-    if (!claimedIdsRef.current.has(square.id)) {
-      claimedIdsRef.current.add(square.id);
-      setClaimedSquares((prev) => [...prev, square]);
+    setCurrentSquare(square);
+
+    const [gridX, gridY] = square.id.split("_").map(Number);
+    if (Number.isFinite(gridX) && Number.isFinite(gridY)) {
+      const neighbors: GridSquare[] = [];
+      for (let dx = -1; dx <= 1; dx += 1) {
+        for (let dy = -1; dy <= 1; dy += 1) {
+          if (dx === 0 && dy === 0) continue;
+          neighbors.push(gridIndicesToSquare(gridX + dx, gridY + dy));
+        }
+      }
+      setNeighborSquares(neighbors);
+    } else {
+      setNeighborSquares([]);
     }
-  });
+  }, []); // Added empty dependency array
+
+  // Assign the result of useLocationTracking to locationState
+  const locationState = useLocationTracking(handleLocationUpdate);
 
   const mapReady = useMemo(() => !!region, [region]);
 
@@ -89,48 +177,233 @@ const Map = () => {
     });
   }, [events]);
 
-  const handleEventCreated = async (event: RaceEvent) => {
+  // Handle deep linking to specific event from search
+  useEffect(() => {
+    if (eventId && events.length > 0) {
+      const targetEvent = events.find((e) => e.id === eventId);
+      if (targetEvent) {
+        // Switch to events view
+        setCurrentView("events");
+
+        // Select the event and show details
+        setSelectedEvent(targetEvent);
+        setDetailsVisible(true);
+
+        // Center map on start checkpoint
+        const startCheckpoint = targetEvent.checkpoints[0];
+        if (startCheckpoint && mapRef.current) {
+          // Small delay to ensure map is ready
+          setTimeout(() => {
+            mapRef.current?.animateToRegion(
+              {
+                latitude: startCheckpoint.latitude,
+                longitude: startCheckpoint.longitude,
+                latitudeDelta: 0.01,
+                longitudeDelta: 0.01,
+              },
+              1000
+            );
+          }, 500);
+        }
+      }
+    }
+  }, [eventId, events]);
+
+  // Fetch events once when position is first available
+  useEffect(() => {
+    if (eventsFetchedRef.current) return;
+    if (!initialPosition) return; // Changed from currentPosition to initialPosition
+
+    eventsFetchedRef.current = true;
+    getEvents(initialPosition).catch((error) => {
+      // Changed from currentPosition to initialPosition
+      console.warn("Failed to fetch events", error);
+    });
+  }, [initialPosition, getEvents]); // Changed dependency from currentPosition to initialPosition
+
+  // Fetch tickets on mount
+  useEffect(() => {
+    if (ticketsFetchedRef.current) return;
+    ticketsFetchedRef.current = true;
+
+    fetchTickets().catch((err) => {
+      console.warn("Failed to fetch tickets:", err);
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const handleConsumeTicket = async (event: RaceEvent | null) => {
+    if (!event) return;
+
+    const ticket = getTicketForEvent(event.id);
+    if (!ticket) {
+      Alert.alert("No Ticket", "You don't have a ticket for this event.");
+      return;
+    }
+
+    if (ticket.is_used) {
+      Alert.alert("Already Used", "This ticket has already been used.");
+      return;
+    }
+
+    try {
+      await consumeTicket(ticket.id);
+      setDetailsVisible(false);
+      setSelectedEvent(null);
+
+      Alert.alert(
+        "Ticket Verified",
+        `Your ticket for ${event.name} has been verified. Ready to start your run?`,
+        [
+          {
+            text: "Later",
+            style: "cancel",
+          },
+          {
+            text: "Start Run",
+            style: "default",
+            onPress: () => {
+              router.push({
+                pathname: "/run",
+                params: {
+                  event: JSON.stringify(event),
+                },
+              });
+            },
+          },
+        ]
+      );
+    } catch (error: any) {
+      const message =
+        error?.payload?.message ??
+        error?.message ??
+        "Failed to consume ticket. Please try again.";
+      Alert.alert("Error", message);
+    }
+  };
+
+  const handlePurchaseTicket = async (event: RaceEvent | null) => {
+    if (!event) return;
+
+    if (hasTicketForEvent(event.id)) {
+      Alert.alert(
+        "Already Purchased",
+        "You already have a ticket for this event."
+      );
+      return;
+    }
+
+    try {
+      await purchaseTicket(event.id);
+      Alert.alert(
+        "Success",
+        `You have successfully purchased a ticket for ${event.name}.`
+      );
+      setDetailsVisible(false);
+      setSelectedEvent(null);
+    } catch (error: any) {
+      const message =
+        error?.payload?.message ??
+        error?.message ??
+        "Failed to purchase ticket. Please try again.";
+      Alert.alert("Error", message);
+    }
+  };
+
+  const handleEventCreated = async (draft: EventBuilderResult) => {
     let route: EventRoute | undefined;
+    let distance: number | undefined;
+
+    const baseEvent = {
+      id: draft.id,
+      name: draft.name,
+      checkpoints: draft.checkpoints,
+      isCircuit: draft.isCircuit,
+      startCheckpointId: draft.startCheckpointId,
+      endCheckpointId: draft.endCheckpointId,
+      raceDate: draft.raceDate,
+      raceTime: draft.raceTime,
+    } as RaceEvent;
 
     if (directionsApiKey) {
       try {
-        route = await fetchEventRoute(event, directionsApiKey);
+        route = await fetchEventRoute(baseEvent, directionsApiKey);
+        const distanceInfo = await fetchEventDistance(
+          baseEvent,
+          directionsApiKey
+        );
+        distance = distanceInfo?.distance
+          ? distanceInfo.distance / 1000
+          : undefined;
         setRoutingError(null);
       } catch (error) {
-        console.warn("Failed to fetch Google Directions", error);
+        console.warn("Failed to fetch Google Directions or Distance", error);
         setRoutingError(
-          "Saved event with fallback path (Directions unavailable)."
+          "Saved event with fallback path (Directions/Distance unavailable)."
         );
       }
     } else {
       setRoutingError("Missing Google Directions API key.");
     }
 
-    const ordered = reorderCheckpointsForEvent(event);
-    const nextEvent: RaceEvent = {
-      ...event,
-      checkpoints: ordered,
-      startCheckpointId: ordered[0]?.id,
-      endCheckpointId: event.isCircuit
-        ? ordered[0]?.id
-        : ordered[ordered.length - 1]?.id,
-      raceDate: event.raceDate,
-      raceTime: event.raceTime,
+    const orderedEvent: RaceEvent = {
+      ...baseEvent,
+      checkpoints: draft.checkpoints,
       route,
+      city: draft.city,
+      entryFee: draft.entryFee,
     };
+
+    const routeCoordinates =
+      route?.coordinates?.length && route.coordinates.length > 0
+        ? route.coordinates
+        : buildEventPath(orderedEvent);
+
+    const payload: CreateEventPayload = {
+      name: draft.name,
+      city: draft.city,
+      entry_fee: draft.entryFee,
+      date: draft.raceDate,
+      startTime: draft.raceTime,
+      km_long: distance,
+      checkpoints: draft.checkpoints.map((checkpoint) => ({
+        address: checkpoint.title ?? "Checkpoint",
+        lat: checkpoint.latitude,
+        lng: checkpoint.longitude,
+        is_start: checkpoint.id === draft.startCheckpointId,
+        is_end: checkpoint.id === draft.endCheckpointId,
+      })),
+      trace: routeCoordinates.map(({ latitude, longitude }) => ({
+        lat: latitude,
+        lng: longitude,
+      })),
+    };
+
+    try {
+      await createEvent(payload);
+    } catch (error: any) {
+      const message =
+        error?.payload?.message ??
+        error?.message ??
+        "Failed to create event. Please try again.";
+      setRoutingError(message);
+      return;
+    }
 
     if (route) {
       setEventRoutes((prev) => ({
         ...prev,
-        [nextEvent.id]: route,
+        [orderedEvent.id]: route!,
       }));
     }
 
-    setEvents((prev) => {
-      const next = [...prev, nextEvent];
-      appendStoredEvent(nextEvent);
-      return next;
-    });
+    if (currentPosition) {
+      try {
+        await refreshEvents(currentPosition);
+      } catch (error) {
+        console.warn("Failed to refresh events after creation", error);
+      }
+    }
 
     setEventModalVisible(false);
   };
@@ -173,7 +446,15 @@ const Map = () => {
     }
   }, []);
 
-  if (locationState.loading) {
+  const territoryReady = currentView !== "territory" || !territoriesLoading;
+
+  const eventsReady =
+    currentView !== "events" || !eventsLoading || events.length > 0;
+
+  const showBlockingSpinner =
+    locationState.loading || !mapReady || (!territoryReady && !eventsReady);
+
+  if (showBlockingSpinner) {
     return (
       <SafeAreaView style={{ flex: 1, justifyContent: "center" }}>
         <ActivityIndicator size="large" color={colors.primary} />
@@ -193,14 +474,6 @@ const Map = () => {
     );
   }
 
-  if (!mapReady) {
-    return (
-      <SafeAreaView style={{ flex: 1, justifyContent: "center" }}>
-        <ActivityIndicator size="large" color={colors.primary} />
-      </SafeAreaView>
-    );
-  }
-
   return (
     <View style={{ flex: 1 }}>
       <MapView
@@ -211,16 +484,38 @@ const Map = () => {
         region={region!}
         showsUserLocation
       >
-        {currentView === "territory" &&
-          claimedSquares.map((square) => (
-            <Polygon
-              key={square.id}
-              coordinates={gridSquareToPolygon(square)}
-              fillColor="rgba(0, 150, 255, 0.3)"
-              strokeColor="rgba(0, 150, 255, 0.8)"
-              strokeWidth={2}
-            />
-          ))}
+        {currentView === "territory" && (
+          <>
+            {territories.map((territory) => (
+              <Polygon
+                key={`territory-${territory.id}`}
+                coordinates={territory.polygon}
+                strokeColor={territory.color}
+                strokeWidth={2}
+                fillColor={hexToRgba(territory.color, 0.25)}
+              />
+            ))}
+
+            {neighborSquares.map((square) => (
+              <Polygon
+                key={`neighbor-${square.id}`}
+                coordinates={gridSquareToPolygon(square)}
+                strokeColor="rgba(0, 150, 255, 0.6)"
+                strokeWidth={2}
+                fillColor="transparent"
+              />
+            ))}
+
+            {currentSquare && (
+              <Polygon
+                coordinates={gridSquareToPolygon(currentSquare)}
+                fillColor="rgba(0, 150, 255, 0.3)"
+                strokeColor="rgba(0, 150, 255, 0.9)"
+                strokeWidth={2}
+              />
+            )}
+          </>
+        )}
 
         {currentView === "events" &&
           events.map((event) => {
@@ -259,6 +554,23 @@ const Map = () => {
           })}
       </MapView>
 
+      {(currentView === "territory" &&
+        territoriesLoading &&
+        !territories.length) ||
+      (currentView === "events" && eventsLoading && !events.length) ? (
+        <View
+          style={{
+            position: "absolute",
+            top: "50%",
+            left: 0,
+            right: 0,
+            alignItems: "center",
+          }}
+        >
+          <ActivityIndicator size="large" color={colors.primary} />
+        </View>
+      ) : null}
+
       <MapSearchBar
         searchQuery={searchQuery}
         onChange={(text) => {
@@ -274,7 +586,9 @@ const Map = () => {
         onSelect={handleSearchSelect}
       />
 
-      <MapRoutingWarning message={routingError} />
+      <MapRoutingWarning
+        message={routingError ?? territoriesError ?? eventsError}
+      />
 
       <MapFabMenu
         open={fabOpen}
@@ -294,9 +608,14 @@ const Map = () => {
           setDetailsVisible(false);
           setSelectedEvent(null);
         }}
+        isPurchaseAvailable={isEventActive || false}
+        onPurchaseTicket={() => handlePurchaseTicket(selectedEvent)}
+        hasTicket={selectedEvent ? hasTicketForEvent(selectedEvent.id) : false}
+        onConsumeTicket={() => handleConsumeTicket(selectedEvent)}
       />
 
       <EventBuilderModal
+        initialRegion={region ?? undefined}
         visible={eventModalVisible}
         onClose={() => setEventModalVisible(false)}
         onConfirm={handleEventCreated}

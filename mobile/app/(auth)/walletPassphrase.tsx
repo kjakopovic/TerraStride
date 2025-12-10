@@ -1,86 +1,93 @@
-import React from "react";
-import { View, Text, ScrollView } from "react-native";
+import React, { useEffect, useMemo } from "react";
+import { ScrollView, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import AuthHeader from "@/components/auth/authHeader";
-import CustomAuthInput from "@/components/auth/customAuthInput";
 import CustomButton from "@/components/customButton";
 import Spacer from "@/components/spacer";
 import { useTheme } from "@/core/theme";
 import { STRINGS } from "@/core/constants/strings";
 import { useRouter } from "expo-router";
+import { useRegisterFlow } from "@/context/RegisterFlowContext";
 
 const WalletPassphrase = () => {
   const { colors, fontSizes, spacing } = useTheme();
-  const generatedPassphrase =
-    "planet lens truck silk velvet hazard canyon galaxy lemon summit vivid answer";
-
   const router = useRouter();
+  const { registerData, passphrase, setPassphrase } = useRegisterFlow();
 
-  const goToEnterCode = () => {
+  useEffect(() => {
+    if (!registerData) {
+      router.replace("/register");
+    }
+  }, [registerData, router]);
+
+  const generatedPassphrase = useMemo(
+    () =>
+      passphrase ??
+      "planet lens truck silk velvet hazard canyon galaxy lemon summit vivid answer",
+    [passphrase]
+  );
+
+  const handleContinue = () => {
+    if (!registerData) return;
+    setPassphrase(generatedPassphrase);
     router.push("/enterCode");
   };
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
-      <ScrollView>
-        <View
+      <ScrollView
+        contentContainerStyle={{
+          paddingHorizontal: spacing.defaultPaddingHorizontal,
+          paddingVertical: spacing.xlarge,
+          gap: spacing.large,
+        }}
+      >
+        <Text
           style={{
-            flex: 1,
-            alignItems: "flex-start",
-            paddingHorizontal: spacing.defaultPaddingHorizontal,
-            paddingTop: spacing.xlarge,
+            color: colors.text,
+            fontSize: fontSizes.xxlarge,
+            fontFamily: "LeagueSpartan-Bold",
           }}
         >
-          <AuthHeader
-            title={STRINGS.AUTH.WALLET_PASSPHRASE.TITLE}
-            subtitle={STRINGS.AUTH.WALLET_PASSPHRASE.SUBTITLE}
-          />
+          {STRINGS.AUTH.WALLET_PASSPHRASE.TITLE}
+        </Text>
 
+        <Text
+          style={{
+            color: colors.text40,
+            fontSize: fontSizes.medium,
+            fontFamily: "LeagueSpartan-Regular",
+          }}
+        >
+          {STRINGS.AUTH.WALLET_PASSPHRASE.DESCRIPTION}
+        </Text>
+
+        <View
+          style={{
+            borderWidth: 1,
+            borderColor: "rgba(33,33,33,0.12)",
+            borderRadius: 16,
+            padding: spacing.large,
+            backgroundColor: "rgba(240,240,240,0.3)",
+          }}
+        >
           <Text
             style={{
-              marginTop: spacing.large,
-              fontSize: fontSizes.medium,
-              color: colors.text40,
-              fontFamily: "LeagueSpartan-Regular",
-              width: "90%",
+              color: colors.text,
+              fontSize: fontSizes.large,
+              lineHeight: fontSizes.large * 1.4,
+              fontFamily: "LeagueSpartan-SemiBold",
             }}
           >
-            {STRINGS.AUTH.WALLET_PASSPHRASE.DESCRIPTION}
+            {generatedPassphrase}
           </Text>
-
-          <CustomAuthInput
-            label={STRINGS.AUTH.WALLET_PASSPHRASE.INPUT_LABEL}
-            value={generatedPassphrase}
-            editable={false}
-            customBorderRadius={8}
-            multiline
-            inputHeight={spacing.xlarge * 5}
-            customMargin={spacing.xlarge}
-          />
-
-          <Spacer size={spacing.large} />
-
-          <CustomButton
-            title={STRINGS.AUTH.WALLET_PASSPHRASE.CTA}
-            onPress={goToEnterCode}
-          />
-
-          <Spacer size={spacing.large} />
-
-          <Text
-            style={{
-              fontSize: fontSizes.small,
-              color: colors.text40,
-              textAlign: "center",
-              fontFamily: "LeagueSpartan-Regular",
-              width: "100%",
-            }}
-          >
-            {STRINGS.AUTH.WALLET_PASSPHRASE.DISCLAIMER}
-          </Text>
-
-          <Spacer size={spacing.xlarge} />
         </View>
+
+        <Spacer size={spacing.xlarge} />
+
+        <CustomButton
+          title={STRINGS.AUTH.WALLET_PASSPHRASE.CTA}
+          onPress={handleContinue}
+        />
       </ScrollView>
     </SafeAreaView>
   );

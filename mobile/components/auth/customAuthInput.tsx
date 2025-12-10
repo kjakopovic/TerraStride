@@ -13,6 +13,7 @@ type CustomAuthInputProps = TextInputProps & {
   customMargin?: number;
   customBorderRadius?: number;
   inputHeight?: number;
+  error?: string;
 };
 
 const CustomAuthInput: React.FC<CustomAuthInputProps> = ({
@@ -20,6 +21,7 @@ const CustomAuthInput: React.FC<CustomAuthInputProps> = ({
   customMargin,
   customBorderRadius,
   inputHeight,
+  error,
   style,
   multiline,
   ...textInputProps
@@ -52,6 +54,12 @@ const CustomAuthInput: React.FC<CustomAuthInputProps> = ({
         multilineInput: {
           textAlignVertical: "top",
         },
+        errorText: {
+          marginTop: spacing.small,
+          color: colors.error,
+          fontSize: fontSizes.small,
+          fontFamily: "LeagueSpartan-Regular",
+        },
       }),
     [
       borderRadius.full,
@@ -60,6 +68,7 @@ const CustomAuthInput: React.FC<CustomAuthInputProps> = ({
       colors.text40,
       fontSizes.medium,
       spacing.medium,
+      spacing.small,
     ]
   );
 
@@ -79,6 +88,18 @@ const CustomAuthInput: React.FC<CustomAuthInputProps> = ({
         ]}
         placeholderTextColor={colors.text40}
       />
+      {error ? (
+        <Text
+          style={{
+            marginTop: spacing.small,
+            color: colors.error,
+            fontSize: fontSizes.small,
+            fontFamily: "LeagueSpartan-Regular",
+          }}
+        >
+          {error}
+        </Text>
+      ) : null}
     </View>
   );
 };

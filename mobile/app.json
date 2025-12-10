@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "mobile",
-    "slug": "mobile",
+    "name": "TerraStride",
+    "slug": "terrastride",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -10,7 +10,8 @@
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.anonymous.mobile"
+      "bundleIdentifier": "com.anonymous.mobile",
+      "appleTeamId": "359R7KZAFR"
     },
     "android": {
       "adaptiveIcon": {
@@ -24,7 +25,13 @@
       "permissions": [
         "android.permission.ACCESS_COARSE_LOCATION",
         "android.permission.ACCESS_FINE_LOCATION"
-      ]
+      ],
+      "package": "com.anonymous.mobile",
+      "config": {
+        "googleMaps": {
+          "apiKey": "AIzaSyCLJLUxzB9ePR4gQcIHAcNJMGrjh1qehhY"
+        }
+      }
     },
     "web": {
       "output": "static",
@@ -57,6 +64,12 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "1899f4e3-cc9a-4356-ab3d-99537a8f1728"
+      }
     }
   }
 }

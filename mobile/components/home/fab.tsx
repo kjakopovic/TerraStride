@@ -1,6 +1,7 @@
 import React, { FC } from "react";
 import { View, TouchableOpacity, Image, ViewStyle } from "react-native";
 import { useTheme } from "@/core/theme";
+import { useRouter } from "expo-router";
 import * as icons from "@/core/constants/icons";
 
 type FloatingActionBarProps = {
@@ -17,12 +18,21 @@ const FloatingActionBar: FC<FloatingActionBarProps> = ({
   containerStyle,
 }) => {
   const { colors, borderRadius, spacing } = useTheme();
+  const router = useRouter();
+
+  const handleSearchPress = () => {
+    router.push("/search");
+  };
+
+  const handleRunPress = () => {
+    router.push("/territory-capture");
+  };
 
   return (
     <View
       style={{
         position: "absolute",
-        bottom: spacing.xlarge,
+        bottom: spacing.xlarge + 40,
         left: 0,
         right: 0,
         alignItems: "center",
@@ -50,7 +60,7 @@ const FloatingActionBar: FC<FloatingActionBarProps> = ({
             shadowRadius: 6,
             shadowOffset: { width: 0, height: 5 },
           }}
-          onPress={onRunPress}
+          onPress={handleRunPress}
         >
           <Image
             source={icons.figureRun}
@@ -92,7 +102,7 @@ const FloatingActionBar: FC<FloatingActionBarProps> = ({
             shadowRadius: 6,
             shadowOffset: { width: 0, height: 5 },
           }}
-          onPress={onWalletPress}
+          onPress={handleSearchPress}
         >
           <Image
             source={icons.search}

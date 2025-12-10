@@ -10,14 +10,28 @@ import {
 import { useTheme } from "@/core/theme";
 import { RaceEvent } from "@/utils/eventsUtils";
 import * as icons from "@/core/constants/icons";
+import CustomButton from "../customButton";
+import Spacer from "../spacer";
 
 type Props = {
   event: RaceEvent | null;
   visible: boolean;
   onClose: () => void;
+  onPurchaseTicket: () => void;
+  onConsumeTicket?: () => void;
+  isPurchaseAvailable: boolean;
+  hasTicket: boolean;
 };
 
-const EventDetailsModal: React.FC<Props> = ({ event, visible, onClose }) => {
+const EventDetailsModal: React.FC<Props> = ({
+  event,
+  visible,
+  onClose,
+  onPurchaseTicket,
+  isPurchaseAvailable,
+  hasTicket,
+  onConsumeTicket,
+}) => {
   const { colors, borderRadius } = useTheme();
 
   return (
@@ -76,6 +90,14 @@ const EventDetailsModal: React.FC<Props> = ({ event, visible, onClose }) => {
               <Text style={{ color: colors.text40 }}>
                 {event.isCircuit ? "Circuit race" : "Point-to-point"}
               </Text>
+              {event.city && (
+                <Text style={{ color: colors.text }}>{event.city}</Text>
+              )}
+              {event.entryFee !== undefined && (
+                <Text style={{ color: colors.text, fontWeight: "500" }}>
+                  Entry fee: {event.entryFee}
+                </Text>
+              )}
               {event.raceDate && (
                 <Text style={{ color: colors.text, fontWeight: "500" }}>
                   {event.raceDate}
@@ -106,6 +128,20 @@ const EventDetailsModal: React.FC<Props> = ({ event, visible, onClose }) => {
                   </View>
                 ))}
               </View>
+              <Spacer size={8} />
+              <CustomButton
+                disabled={!isPurchaseAvailable}
+                title={
+                  hasTicket
+                    ? "Consume Ticket"
+                    : `Buy admission ticket (${event.entryFee ?? 2} USDC)`
+                }
+                onPress={() =>
+                  hasTicket
+                    ? onConsumeTicket && onConsumeTicket()
+                    : onPurchaseTicket()
+                }
+              />
             </ScrollView>
           )}
         </View>

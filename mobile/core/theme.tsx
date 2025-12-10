@@ -6,6 +6,7 @@ export const theme = {
     background: "#FAFAFA",
     text: "#212121",
     text40: "rgba(33, 33, 33, 0.4)",
+    text10: "rgba(33, 33, 33, 0.1)",
     success: "#4CD964",
     success10: "rgba(76, 217, 100, 0.2)",
     error: "#FF3B30",
