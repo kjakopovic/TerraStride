@@ -1,0 +1,30 @@
+{
+  "cli": {
+    "version": ">= 16.27.0",
+    "appVersionSource": "remote"
+  },
+  "build": {
+    "development": {
+      "developmentClient": true,
+      "distribution": "internal"
+    },
+    "preview": {
+      "distribution": "internal",
+      "android": {
+        "buildType": "apk"
+      },
+      "env": {
+        "EXPO_PUBLIC_GOOGLE_MAPS_API_KEY": "your-key",
+        "EXPO_PUBLIC_API_BASE_URL_USERS": "your-url",
+        "EXPO_PUBLIC_API_BASE_URL_EVENTS": "your-url",
+        "EXPO_PUBLIC_API_BASE_URL_TERRITORIES": "your-url"
+      }
+    },
+    "production": {
+      "autoIncrement": true
+    }
+  },
+  "submit": {
+    "production": {}
+  }
+}
